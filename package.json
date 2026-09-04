@@ -7,10 +7,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n API,MOBILE \"npm run dev:backend\" \"npm run dev:mobile\"",
-    "dev:api": "npm run dev --workspace=@explain-it-back/backend",
+    "dev": "concurrently -n BACKEND,MOBILE \"npm run dev:backend\" \"npm run dev:mobile\"",
+    "dev:backend": "npm run dev --workspace=@explain-it-back/backend",
     "dev:mobile": "npm run start --workspace=@explain-it-back/mobile",
-    "typecheck:api": "npm run typecheck --workspace=@explain-it-back/backend"
+    "typecheck:backend": "npm run typecheck --workspace=@explain-it-back/backend"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"
