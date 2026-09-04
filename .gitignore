@@ -1,1 +1,20 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Builds
+dist/
+build/
+
+# Expo
+.expo/
+
+# OS/editor
+.DS_Store
+
+# Logs
+*.log
