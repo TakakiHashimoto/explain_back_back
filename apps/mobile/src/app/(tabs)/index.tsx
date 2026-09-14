@@ -1,5 +1,6 @@
+import { useClerk, useUser } from '@clerk/expo';
 import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
@@ -29,6 +30,9 @@ function getDevMenuHint() {
 }
 
 export default function HomeScreen() {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -45,14 +49,21 @@ export default function HomeScreen() {
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
+            title="Signed in as"
+            hint={<ThemedText type="code">{user?.primaryEmailAddress?.emailAddress}</ThemedText>}
+          />
+          <HintRow
             title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+            hint={<ThemedText type="code">src/app/(tabs)/index.tsx</ThemedText>}
           />
           <HintRow title="Dev tools" hint={getDevMenuHint()} />
           <HintRow
             title="Fresh start"
             hint={<ThemedText type="code">npm run reset-project</ThemedText>}
           />
+          <Pressable onPress={() => signOut()}>
+            <ThemedText type="linkPrimary">Sign out</ThemedText>
+          </Pressable>
         </ThemedView>
 
         {Platform.OS === 'web' && <WebBadge />}

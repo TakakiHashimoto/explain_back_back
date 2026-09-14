@@ -40,4 +40,6 @@ example
 
 # generated native folders
 /ios
+/ios.stale
 /android
+/android.stale
