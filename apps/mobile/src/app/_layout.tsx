@@ -14,6 +14,7 @@ if (!publishableKey) {
 
 SplashScreen.preventAutoHideAsync();
 
+/** Renders nested routes with Clerk authentication, token caching, and the active color theme. */
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   return (
