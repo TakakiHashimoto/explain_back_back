@@ -29,6 +29,7 @@ function getDevMenuHint() {
   );
 }
 
+/** Displays Expo development hints with the current user's email and a sign-out control. */
 export default function HomeScreen() {
   const { user } = useUser();
   const { signOut } = useClerk();
