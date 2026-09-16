@@ -14,5 +14,9 @@
   },
   "devDependencies": {
     "concurrently": "^10.0.5"
+  },
+  "dependencies": {
+    "@clerk/express": "^2.1.69",
+    "express": "^5.2.1"
   }
 }
