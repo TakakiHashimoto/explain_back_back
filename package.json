@@ -7,16 +7,22 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n BACKEND,MOBILE \"npm run dev:backend\" \"npm run dev:mobile\"",
-    "dev:backend": "npm run dev --workspace=@explain-it-back/backend",
-    "dev:mobile": "npm run start --workspace=@explain-it-back/mobile",
-    "typecheck:backend": "npm run typecheck --workspace=@explain-it-back/backend"
+    "dev": "concurrently -n BACKEND,MOBILE \"bun run dev:backend\" \"bun run dev:mobile\"",
+    "dev:backend": "bun run --filter @explain-it-back/backend dev",
+    "dev:mobile": "bun run --filter @explain-it-back/mobile start",
+    "typecheck:backend": "bun run --filter @explain-it-back/backend typecheck"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.5",
+    "@types/bun": "latest"
   },
   "dependencies": {
     "@clerk/express": "^2.1.69",
     "express": "^5.2.1"
+  },
+  "module": "index.ts",
+  "type": "module",
+  "peerDependencies": {
+    "typescript": "^7"
   }
 }

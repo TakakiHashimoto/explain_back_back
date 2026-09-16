@@ -21,7 +21,8 @@
     "@types/pg": "^8.23.1",
     "prisma": "^7.10.0",
     "tsx": "^4.23.13",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "@types/bun": "latest"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
