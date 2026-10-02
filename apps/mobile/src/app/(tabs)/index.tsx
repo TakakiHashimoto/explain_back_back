@@ -1,4 +1,5 @@
-import { useClerk, useUser } from '@clerk/expo';
+import { useAuth, useClerk, useUser } from '@clerk/expo';
+import { useEffect } from 'react';
 import * as Device from 'expo-device';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,6 +34,23 @@ function getDevMenuHint() {
 export default function HomeScreen() {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    const bootstrapUser = async () => {
+      try {
+        console.log(process.env.EXPO_PUBLIC_API_URL);
+        const token = await getToken();
+        const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('/me', res.status, await res.json());
+      } catch (e) {
+        console.warn('/me failed', e);
+      }
+    };
+    bootstrapUser();
+  }, [getToken]);
 
   return (
     <ThemedView style={styles.container}>
