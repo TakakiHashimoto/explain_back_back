@@ -23,7 +23,12 @@ export async function requireUser(
   const { isAuthenticated, userId } = getAuth(req);
 
   if (!isAuthenticated) {
-    res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({
+      error: {
+        code: "UNAUTHENTICATED",
+        message: "Authentication required.",
+      },
+    });
     return;
   }
 
