@@ -37,6 +37,8 @@
   },
   "scripts": {
     "start": "expo start",
+    "start:android": "(adb reverse tcp:3000 tcp:3000 || true) && expo start --android",
+    "start:ios": "expo start --ios",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",

@@ -7,9 +7,13 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n BACKEND,MOBILE \"bun run dev:backend\" \"bun run dev:mobile\"",
-    "dev:backend": "bun run --filter @explain-it-back/backend dev",
-    "dev:mobile": "bun run --filter @explain-it-back/mobile start",
+    "backend": "bun run --filter @explain-it-back/backend dev",
+    "android": "bun run --filter @explain-it-back/mobile start:android",
+    "ios": "bun run --filter @explain-it-back/mobile start:ios",
+    "start:mobile": "bun run --filter @explain-it-back/mobile start",
+    "dev:android": "concurrently -n BACKEND,ANDROID \"bun run backend\" \"bun run android\"",
+    "dev:ios": "concurrently -n BACKEND,IOS \"bun run backend\" \"bun run ios\"",
+    "dev:all": "concurrently \"bun run backend\" \"bun run start:mobile\"",
     "typecheck:backend": "bun run --filter @explain-it-back/backend typecheck"
   },
   "devDependencies": {
