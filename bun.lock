@@ -5,7 +5,6 @@
     "": {
       "name": "explain-it-back",
       "dependencies": {
-        "@clerk/express": "^2.1.69",
         "express": "^5.2.1",
       },
       "devDependencies": {
@@ -20,6 +19,7 @@
       "name": "@explain-it-back/backend",
       "version": "1.0.0",
       "dependencies": {
+        "@clerk/express": "^2.1.69",
         "@prisma/adapter-pg": "^7.10.0",
         "@prisma/client": "^7.10.0",
         "dotenv": "^17.4.2",
