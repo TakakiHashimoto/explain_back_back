@@ -28,6 +28,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "dotenv": "^17.4.2",
+    "@clerk/express": "^2.1.69",
     "express": "^5.2.1",
     "pg": "^8.23.0",
     "zod": "^3.25.76"
