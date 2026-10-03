@@ -2556,6 +2556,8 @@ BAD_REQUEST
 
 Do not leak raw internal exceptions directly to the mobile client.
 
+Implementation and usage guide: `docs/error-handling/README.md`.
+
 ---
 
 # 60. Security Checklist
