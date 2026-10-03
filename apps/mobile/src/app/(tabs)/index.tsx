@@ -41,12 +41,12 @@ export default function HomeScreen() {
       try {
         console.log(process.env.EXPO_PUBLIC_API_URL);
         const token = await getToken();
-        const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/me`, {
+        const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log('/me', res.status, await res.json());
+        console.log('/api/v1/me', res.status, await res.json());
       } catch (e) {
-        console.warn('/me failed', e);
+        console.warn('/api/v1/me failed', e);
       }
     };
     bootstrapUser();

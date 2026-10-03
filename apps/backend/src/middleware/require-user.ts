@@ -2,6 +2,7 @@ import { getAuth } from "@clerk/express";
 import type { NextFunction, Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import type { User } from "../generated/prisma/client.js";
+import { sendError } from "../lib/errors.js";
 
 // Make req.user known to TypeScript for every route.
 declare global {
@@ -23,7 +24,7 @@ export async function requireUser(
   const { isAuthenticated, userId } = getAuth(req);
 
   if (!isAuthenticated) {
-    res.status(401).json({ error: "Unauthorized" });
+    sendError(res, "UNAUTHENTICATED");
     return;
   }
 

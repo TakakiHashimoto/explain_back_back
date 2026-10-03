@@ -1,6 +1,11 @@
-import express from "express";
+import express, {
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import { clerkMiddleware } from "@clerk/express";
-import { requireUser } from "./middleware/require-user.js";
+import authRoutes from "./router/authRoutes.js";
+import { sendError } from "./lib/errors.js";
 
 export const app = express();
 
@@ -12,7 +17,20 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-// Bootstrap
-app.get("/me", requireUser, (req, res) => {
-  res.json({ id: req.user!.id });
+app.use("/api/v1/me", authRoutes);
+
+app.use((_req, res) => {
+  sendError(res, "NOT_FOUND");
+});
+
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err);
+
+  const status = (err as { status?: number }).status;
+  if (status && status >= 400 && status < 500) {
+    sendError(res, "BAD_REQUEST");
+    return;
+  }
+
+  sendError(res, "INTERNAL_ERROR");
 });
