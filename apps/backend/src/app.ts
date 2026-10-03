@@ -5,6 +5,7 @@ import express, {
 } from "express";
 import { clerkMiddleware } from "@clerk/express";
 import authRoutes from "./router/authRoutes.js";
+import { sendError } from "./lib/errors.js";
 
 export const app = express();
 
@@ -19,14 +20,17 @@ app.get("/health", (_req, res) => {
 app.use("/api/v1/me", authRoutes);
 
 app.use((_req, res) => {
-  res
-    .status(404)
-    .json({ error: { code: "NOT_FOUND", message: "Route not found." } });
+  sendError(res, "NOT_FOUND");
 });
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
-  res.status(500).json({
-    error: { code: "INTERNAL_ERROR", message: "Something went wrong." },
-  });
+
+  const status = (err as { status?: number }).status;
+  if (status && status >= 400 && status < 500) {
+    sendError(res, "BAD_REQUEST");
+    return;
+  }
+
+  sendError(res, "INTERNAL_ERROR");
 });

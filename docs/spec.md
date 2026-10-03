@@ -2551,6 +2551,7 @@ ANALYSIS_FAILED
 INVALID_AI_RESPONSE
 FREE_LIMIT_REACHED
 INTERNAL_ERROR
+BAD_REQUEST
 ```
 
 Do not leak raw internal exceptions directly to the mobile client.
