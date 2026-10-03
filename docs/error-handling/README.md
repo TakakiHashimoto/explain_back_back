@@ -110,7 +110,7 @@ code の名前は `UPPER_SNAKE_CASE` にし、「何が起きたか」を表す�
 |---|---|---|---|
 | `UNAUTHENTICATED` | 401 | Authentication required. | token がない、または無効（`requireUser` が自動で返す） |
 | `BAD_REQUEST` | 400 | Invalid request. | request の形が不正（壊れた JSON は自動で返る） |
-| `NOT_FOUND` | 404 | Route not found. | URL やリソースが見つからない |
+| `NOT_FOUND` | 404 | Route not found. | URL やリソースが見つからない。**他人のデータにアクセスされた場合も、これを返す**（`docs/auth/README.md` §5） |
 | `INTERNAL_ERROR` | 500 | Something went wrong. | 想定外のエラー（error handler が自動で返す） |
 
 spec §59 には、ほかにも code の候補（Potential codes）が挙がっている：`FORBIDDEN`、`INVALID_AUDIO`、`TRANSCRIPTION_FAILED`、`ANALYSIS_FAILED`、`INVALID_AI_RESPONSE`、`FREE_LIMIT_REACHED`。使うときに `errors.ts` に追加する。
