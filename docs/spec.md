@@ -484,6 +484,8 @@ Authorization: Bearer <token>
 
 Backend derives the authenticated user from the verified token.
 
+Implementation and usage guide: `docs/auth/README.md`.
+
 ---
 
 # 10. Audio Recording — What Actually Happens
