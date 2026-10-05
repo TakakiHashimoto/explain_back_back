@@ -1276,6 +1276,8 @@ under limit → allow
 over limit  → reject
 ```
 
+Free/Pro limits and counting rules: `docs/free-pro/README.md`.
+
 ---
 
 # 33. RevenueCat Webhooks
