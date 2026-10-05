@@ -4,8 +4,8 @@ import { Plan } from "../generated/prisma/enums.js";
 
 export async function getPlan(
   userId: string,
-  db: Prisma.TransactionClient = prisma,
   now: Date,
+  db: Prisma.TransactionClient = prisma,
 ): Promise<Plan> {
   const entitlement = await db.entitlement.findUnique({
     where: {

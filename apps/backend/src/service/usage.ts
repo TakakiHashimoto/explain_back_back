@@ -17,7 +17,7 @@ export async function reserveUsage(
 
     const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
 
-    const userPlan: Plan = await getPlan(userId, tx, now);
+    const userPlan: Plan = await getPlan(userId, now, tx);
     const windowPlan = user.usageWindowPlan;
     let windowStart = user.usageWindowStartAt;
 
