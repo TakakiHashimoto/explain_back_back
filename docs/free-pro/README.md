@@ -2,7 +2,7 @@
 
 > 対象：Explain It Back のチームメンバー（A / B / C）
 > 方針（なぜサーバー側で判定するか）は `docs/spec.md` §32 Server-Side Entitlement Enforcement を参照。この資料は「何回まで使えるか、どう数えるか」をまとめたもの。
-> 最終更新：2026-10-04（§1.1 復習上限の理由、§1.2 タイムゾーンを追記。§2 の提案をすべて決定事項に移動。§1.2 にプラン切り替えの検出方法を追記）
+> 最終更新：2026-10-04（§1.1 復習上限の理由、§1.2 タイムゾーンを追記。§2 の提案をすべて決定事項に移動。§1.2 にプラン切り替えの検出方法を追記。§6 動作確認を追加）
 
 この資料では、項目を次の3つに分けています。
 
@@ -158,3 +158,29 @@ HTTP status を 429 Too Many Requests にする理由：
 | What exactly is Pro? | 上限が大きい（7日間で分析20回・復習120回、fair use limit）。価格は未決定（§3） |
 | Can free users do reviews indefinitely? | いいえ。7日間で18回まで。無料枠の分析の復習はすべてできる量（§1.1） |
 | What onboarding is required? | この資料の対象外 |
+
+---
+
+## 6. 動作確認（開発環境）
+
+token の取得と curl の使い方は `docs/auth/curl.md` を参照。ここでは使用回数に関係する API だけを挙げる。
+
+プランと使用回数：
+
+```bash
+curl -i -H "Authorization: Bearer $TOKEN" $BASE/api/v1/me/entitlement
+```
+
+使用回数の予約（dev 用。`NODE_ENV=production` では無効）。`analysis` を `review` に変えると復習として数える。
+
+| エンドポイント | 予約したレコードの状態 | 回数に含まれるか |
+|---|---|---|
+| `POST /api/v1/dev/analysis/start` | `IN_PROGRESS` のまま | 10分間だけ含まれる（§1.3） |
+| `POST /api/v1/dev/analysis/complete` | `SUCCEEDED` | 含まれる |
+| `POST /api/v1/dev/analysis/fail` | `FAILED` | 含まれない |
+
+```bash
+curl -i -H "Authorization: Bearer $TOKEN" -X POST $BASE/api/v1/dev/analysis/complete
+```
+
+上限に達すると 429 が返る。`error.code` は無料なら `FREE_LIMIT_REACHED`、Pro なら `USAGE_LIMIT_REACHED`（§1.5）。

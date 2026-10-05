@@ -5,6 +5,7 @@ import express, {
 } from "express";
 import { clerkMiddleware } from "@clerk/express";
 import authRoutes from "./router/authRoutes.js";
+import devRoutes from "./router/devRoutes.js";
 import { AppError, sendError } from "./lib/errors.js";
 
 export const app = express();
@@ -18,6 +19,11 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/v1/me", authRoutes);
+
+// test endpoint
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api/v1/dev", devRoutes);
+}
 
 app.use((_req, res) => {
   sendError(res, "NOT_FOUND");
