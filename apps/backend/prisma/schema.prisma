@@ -43,8 +43,7 @@ model Entitlement {
   id        String    @id @default(uuid())
   userId    String    @unique
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  active    Boolean   @default(false)
-  expiresAt DateTime?
+  expiresAt DateTime? // null = no expiration (lifetime entitlement), otherwise the date/time the entitlement expires
   source    String // The source of the entitlement, e.g. "revenuecat", "manual", "promo", etc.
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
