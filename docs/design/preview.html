@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Socratic Precision — component reference</title>
+    <link rel="stylesheet" href="../../apps/mobile/src/globals.css" />
+  </head>
+  <body class="app-shell" style="margin: 0">
+    <main class="screen stack gap-xl">
+      <header class="stack gap-sm">
+        <p class="label-sm text-primary">EXPLAIN IT BACK · COMPONENT REFERENCE</p>
+        <h1 class="display-lg">Socratic Precision</h1>
+        <p class="body-lg text-secondary">Warm surfaces. Clear feedback. Room to think.</p>
+        <p class="body-sm text-muted">Static style reference; buttons do not perform actions. Plus Jakarta Sans uses a system fallback until loaded.</p>
+      </header>
+      <div class="layout-grid">
+        <section class="layout-main card card-prompt stack" aria-labelledby="prompt-title">
+          <div class="card-header">
+            <span class="chip-warning"><span class="chip-dot" aria-hidden="true"></span>Needs review</span>
+            <span class="label-md tabular-nums text-muted">02 / 08</span>
+          </div>
+          <h2 id="prompt-title" class="headline-lg">Explain quantum superposition as if I am 12.</h2>
+          <p class="body-md text-secondary">Use one familiar example. Focus on what the concept means before adding the details.</p>
+          <div class="field">
+            <label class="label-lg" for="explanation">Your explanation</label>
+            <textarea class="textarea" id="explanation" placeholder="Start with the simplest version…"></textarea>
+          </div>
+          <button class="btn-primary" type="button">Start explaining</button>
+        </section>
+        <aside class="layout-aside stack">
+          <section class="card stack" aria-labelledby="feedback-title">
+            <span class="chip-success"><span class="chip-dot" aria-hidden="true"></span>Mastered</span>
+            <h2 id="feedback-title" class="headline-md">A clear starting point</h2>
+            <blockquote class="card-excerpt">“A measurement gives us one outcome.”</blockquote>
+            <p class="body-md text-secondary">Next, explain how the state before measurement differs from ordinary uncertainty.</p>
+            <a class="link label-lg" href="#type-reference">View typography reference</a>
+          </section>
+          <section class="card stack" aria-labelledby="status-title">
+            <h2 id="status-title" class="headline-sm">Diagnostic states</h2>
+            <div class="row wrap">
+              <span class="chip-success">Mastered</span>
+              <span class="chip-warning">Needs review</span>
+              <span class="chip-danger">Misconception</span>
+            </div>
+          </section>
+        </aside>
+      </div>
+      <section class="card stack" aria-labelledby="buttons-title">
+        <h2 id="buttons-title" class="headline-md">Buttons</h2>
+        <div class="row wrap">
+          <button class="btn-primary" type="button">Primary</button>
+          <button class="btn-secondary" type="button">Secondary</button>
+          <button class="btn-danger" type="button">Reset explanation</button>
+          <button class="btn-ghost" type="button">Skip for now</button>
+          <button class="btn-primary" type="button" disabled>Disabled</button>
+        </div>
+      </section>
+      <section class="card stack" aria-labelledby="inputs-title">
+        <h2 id="inputs-title" class="headline-md">Inputs</h2>
+        <div class="field">
+          <label class="label-lg" for="search">Search concepts</label>
+          <input class="input input-search" id="search" type="search" placeholder="Search by name…" />
+        </div>
+        <div class="field">
+          <label class="label-lg" for="topic">Topic</label>
+          <input class="input" id="topic" aria-invalid="true" aria-describedby="topic-error" value="" />
+          <p class="field-error" id="topic-error">Enter a topic to continue.</p>
+        </div>
+        <div class="field">
+          <label class="label-lg" for="readonly-example">Disabled field</label>
+          <input class="input" id="readonly-example" disabled value="Unavailable" />
+        </div>
+      </section>
+      <section class="stack" aria-labelledby="concepts-title">
+        <h2 id="concepts-title" class="headline-md">Concept breakdown</h2>
+        <ul class="list">
+          <li class="list-row">
+            <span class="body-md">Measurement</span>
+            <span class="strength-meter" role="img" aria-label="Retention strength: 3 of 3">
+              <span class="strength-segment is-filled"></span><span class="strength-segment is-filled"></span><span class="strength-segment is-filled"></span>
+            </span>
+          </li>
+          <li class="list-row">
+            <span class="body-md">Superposition</span>
+            <span class="strength-meter" role="img" aria-label="Retention strength: 1 of 3">
+              <span class="strength-segment is-filled"></span><span class="strength-segment"></span><span class="strength-segment"></span>
+            </span>
+          </li>
+        </ul>
+      </section>
+      <section class="card card-floating action-zone" aria-labelledby="recording-title">
+        <h2 id="recording-title" class="headline-md">Recording state preview</h2>
+        <div class="waveform" aria-hidden="true">
+          <span class="waveform-bar" style="--amplitude: 25%"></span><span class="waveform-bar" style="--amplitude: 60%"></span><span class="waveform-bar" style="--amplitude: 100%"></span><span class="waveform-bar" style="--amplitude: 75%"></span><span class="waveform-bar" style="--amplitude: 35%"></span>
+        </div>
+        <div class="row gap-lg">
+          <button class="record-button" type="button" aria-label="Start recording (preview)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>
+          </button>
+          <button class="record-button is-recording" type="button" aria-label="Stop recording (preview)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>
+          </button>
+        </div>
+      </section>
+      <section id="type-reference" class="card stack" aria-labelledby="type-title">
+        <h2 id="type-title" class="headline-lg">Typography</h2>
+        <p class="display-lg">Display / 28–36</p>
+        <p class="headline-lg">Headline large / 24</p>
+        <p class="headline-md">Headline medium / 20</p>
+        <p class="headline-sm">Headline small / 18</p>
+        <p class="body-lg">Body large / 17 — Explain one idea at a time.</p>
+        <p class="body-md">Body medium / 15 — Make the connection explicit.</p>
+        <p class="body-sm">Body small / 13 — Supporting context.</p>
+        <p class="label-lg">Label large / 14</p>
+        <p class="label-md">Label medium / 12</p>
+        <p class="label-sm">LABEL SMALL / 11</p>
+      </section>
+    </main>
+  </body>
+</html>
