@@ -136,4 +136,4 @@ curl -i http://localhost:3000/api/v1/me
 # {"error":{"code":"UNAUTHENTICATED","message":"Authentication required."}}
 ```
 
-認証済みの確認は、アプリでサインインして呼ぶのが一番簡単。
+認証済みの確認は、アプリでサインインして呼ぶのが一番簡単。アプリなしで確認したいときは `curl.md` の手順で token を取得して呼ぶ。

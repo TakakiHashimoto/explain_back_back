@@ -12,9 +12,51 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Plan {
+  FREE
+  PRO
+}
+
+enum UsageKind {
+  ANALYSIS
+  REVIEW
+}
+
+enum UsageStatus {
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+}
+
 model User {
-  id          String   @id @default(uuid())
-  authSubject String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String        @id @default(uuid())
+  authSubject        String        @unique // Clerk id
+  usageWindowStartAt DateTime? // null = no window yet (first use starts one)
+  usageWindowPlan    Plan? // plan the current window started under
+  usageRecords       UsageRecord[]
+  entitlement        Entitlement?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model Entitlement {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime? // null = no expiration (lifetime entitlement), otherwise the date/time the entitlement expires
+  source    String // The source of the entitlement, e.g. "revenuecat", "manual", "promo", etc.
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model UsageRecord {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      UsageKind
+  status    UsageStatus @default(IN_PROGRESS)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId, kind, createdAt])
 }
