@@ -1,153 +1,119 @@
-# Socratic Precision UI styles
+# Socratic Precision with Tailwind
 
-Use the shared styles instead of repeating colors, card borders, button sizes, or typography in each screen.
+The shared design system lives in [globals.css](../../apps/mobile/src/globals.css). Tailwind CSS 4 and NativeWind 5 compile it for React Native and web. The Expo Router root layout imports it once. The review screen is the first migrated screen; the existing themed navigation and authentication components retain their styling.
 
-- [Web CSS](../../apps/mobile/src/globals.css): imported once by the root layout; classes work on DOM elements in `.web.tsx` components.
-- [Native presets](../../apps/mobile/src/styles/ui.ts): `import { ui, colors } from '@/styles/ui'`; use `style={ui.card}` on React Native components. These presets also work with React Native Web.
-- [Native tokens](../../apps/mobile/src/styles/tokens.ts): colors, spacing, corner radii, layout measurements, and shadows.
-- [Visual class reference](./preview.html): open this local HTML file in a browser to inspect the web components and resize the layout.
+## Installed setup
 
-The chosen palette is the **warm off-white and royal indigo from the detailed component descriptions** in the supplied DESIGN.md. Its opening lavender token table is a different palette and is not mixed into this implementation. This is the supplied light theme; no dark palette is invented. Existing `ThemedView`/`ThemedText` and navigation retain their current theme until a screen explicitly adopts these presets.
+- NativeWind `5.0.0-rc.0` and `react-native-css` `3.1.0-rc.0` are an exact release-candidate pair, not the stable NativeWind 4 setup.
+- Tailwind and its PostCSS plugin are pinned to `4.1.12`.
+- The repository root pins Lightning CSS to `1.30.1` through Bun's `overrides`.
+- `apps/mobile/metro.config.js` wraps Expo's config with `withNativewind`.
+- `apps/mobile/postcss.config.mjs` enables the Tailwind PostCSS plugin.
+- `apps/mobile/nativewind-env.d.ts` enables native `className` types.
+- No NativeWind Babel preset or `tailwind.config.js` is needed for this v5 setup.
 
-## Web: use classes
+From the repository root, run `bun install`. Then, from `apps/mobile`:
 
-`globals.css` is already imported by `src/app/_layout.tsx`. The old `global.css` remains a compatibility import. Outside this Expo app, import `globals.css` once in your entry point. There are no Tailwind or other CSS-library dependencies.
+```sh
+bun run typecheck
+bunx expo start --clear
+```
 
-Place DOM markup in a `.web.tsx` component; ordinary native `View`, `Text`, and `Pressable` do **not** accept these CSS classes. Use the native presets for shared React Native screens.
+Rebuild a development client when native dependencies change. Restart the editor's TypeScript server if it still rejects `className` after installation.
 
-```tsx
-// ExamplePanel.web.tsx
-export function ExamplePanel({ onStart }: { onStart: () => void }) {
-  return (
-    <main className="app-shell">
-      <div className="screen stack">
-        <h1 className="display-lg">Explain It Back</h1>
-        <section className="card card-prompt stack">
-          <span className="chip-warning">Needs review</span>
-          <h2 className="headline-md">Explain this concept in your own words.</h2>
-          <p className="body-md text-secondary">Start with the idea, then give an example.</p>
-          <button type="button" className="btn-primary" onClick={onStart}>
-            Start explaining
-          </button>
-        </section>
-      </div>
-    </main>
-  );
+## Reusable classes
+
+`@theme` defines colors, spacing, radii, and shadows. `@utility` declares reusable names such as `card` and `btn-primary`; `@apply` composes Tailwind utilities inside them. The generated class is `.card`, used without a dot in JSX.
+
+```css
+@theme {
+  --color-primary: #3b5ee8;
+}
+
+@utility card {
+  @apply rounded-lg border border-border bg-surface p-md shadow-card;
 }
 ```
 
-Button and chip variants work by themselves. Card modifiers compose with the base: `card card-prompt`, `card card-floating`. Similarly, use `input input-search`. Combine layout/type utilities such as `stack gap-lg`, `body-md text-muted`, or `label-lg tabular-nums`.
-
-## Native: use style presets
-
-The camelCase names correspond to the CSS names. Text styles go on `Text`, not its containing `View` or `Pressable`: React Native does not inherit text color or typography through containers.
-
 ```tsx
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { layout, spacing, ui } from '@/styles/ui';
+import { Pressable, Text, View } from 'react-native';
 
-export function ExamplePanel({ onStart, disabled = false }: {
-  onStart: () => void;
-  disabled?: boolean;
-}) {
-  const insets = useSafeAreaInsets();
-  const tablet = useWindowDimensions().width >= layout.tablet;
-  const margin = tablet ? layout.tabletMargin : layout.margin;
-
+export function Example() {
   return (
-    <ScrollView style={ui.appShell} contentContainerStyle={[
-      ui.screen,
-      ui.stack,
-      {
-        paddingTop: insets.top + spacing.md,
-        paddingBottom: insets.bottom + spacing.md,
-        paddingLeft: insets.left + margin,
-        paddingRight: insets.right + margin,
-      },
-    ]}>
-      <Text style={tablet ? ui.displayLg : ui.displayLgMobile}>Explain It Back</Text>
-      <View style={[ui.card, ui.cardPrompt, ui.stack]}>
-        <View style={ui.chipWarning}>
-          <Text style={ui.chipWarningText}>Needs review</Text>
-        </View>
-        <Text style={ui.headlineMd}>Explain this concept in your own words.</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled }}
-          disabled={disabled}
-          onPress={onStart}
-          style={({ pressed }) => [
-            ui.btnPrimary,
-            pressed && !disabled && ui.primaryPressed,
-            disabled && ui.disabled,
-          ]}>
-          <Text style={ui.btnPrimaryText}>Start explaining</Text>
-        </Pressable>
+    <View className="screen stack">
+      <View className="card gap-sm">
+        <Text className="headline-md">Explain it in your own words.</Text>
+        <Text className="body-sm text-muted">Start with the core mechanism.</Text>
       </View>
-    </ScrollView>
+      <Pressable className="btn-primary">
+        <Text className="btn-primary-text">Submit Answer</Text>
+      </Pressable>
+    </View>
   );
 }
 ```
 
-`ui.pressed` adds the optional tactile transform and pressed shadow. Only apply it when reduced motion is off (query/observe React Native's `AccessibilityInfo`); `ui.primaryPressed` changes color without motion. Native styles do not attach handlers, disable presses, animate, or load fonts by themselves.
+Put container styles on `View`/`Pressable` and text styles on `Text`. Button and chip text have separate classes. Classes do not implement submission, recording, counters, or navigation. The review screen remains static.
 
-For a focused native input, use state and attach the matching presets:
+Compose utilities to customize a shared class, for example `card border-0 gap-sm` or `btn-primary shadow-card`. For actual interactive controls, attach handlers separately and use `active:bg-primary-pressed` or `disabled:opacity-50` when appropriate. Do not construct partial class names such as `bg-${color}`; use complete literal alternatives so Tailwind can discover them.
+
+| Purpose | Classes |
+| --- | --- |
+| Screen | `app-shell`, `screen` |
+| Layout | `stack`, `row`, `row-between`, `wrap`, `full-width` |
+| Spacing | `gap-xs`, `gap-sm`, `gap-md`, `gap-lg`, `gap-xl`, `px-margin` |
+| Cards | `card`, `card-prompt`, `card-floating`, `card-header`, `card-excerpt` |
+| Buttons | `btn-primary`, `btn-secondary`, `btn-danger`, `btn-ghost` |
+| Button text | `btn-primary-text`, `btn-secondary-text`, `btn-danger-text`, `btn-ghost-text` |
+| Chips | `chip-success`, `chip-warning`, `chip-danger`, plus matching `-text` classes |
+| Fields | `field`, `input`, `input-search`, `textarea`, `field-error` |
+| Lists | `list`, `list-row`, `list-row-divider` |
+| Retention | `strength-meter`, `strength-segment`, `strength-filled` |
+| Recording visuals | `record-button`, `waveform`, `waveform-bar` |
+| Typography | `display-lg`, `display-lg-mobile`, `headline-lg/md/sm`, `body-lg/md/sm`, `label-lg/md/sm` |
+| Text colors | `text-primary`, `text-secondary`, `text-muted`, `text-danger-text` |
+
+`--spacing-sm` creates spacing utilities such as `gap-sm` and `p-sm`. `--color-primary` creates `bg-primary`, `text-primary`, and `border-primary`. Typography is applied explicitly on native. The existing 16px root baseline is preserved; the `tablet:` breakpoint begins at 600px. Fonts use NativeWind's platform defaults; Plus Jakarta Sans still requires separately loaded font assets.
+
+## Native components and platform details
+
+Core React Native components support `className` through the Metro integration. Use `contentContainerClassName` for the inner content of a `ScrollView`. Use `textAlignVertical="top"` on multiline inputs. Preserve safe-area handling via `react-native-safe-area-context` and avoid adding the same insets twice.
+
+Wrap third-party components that accept a `style` prop with `styled` when needed:
 
 ```tsx
-import { useState } from 'react';
-import { TextInput } from 'react-native';
-import { colors, ui } from '@/styles/ui';
+import { styled } from 'nativewind';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export function ExplanationInput() {
-  const [focused, setFocused] = useState(false);
-  return (
-    <TextInput
-      multiline
-      accessibilityLabel="Your explanation"
-      placeholder="Explain it in your own words…"
-      placeholderTextColor={colors.placeholder}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      style={[ui.textarea, focused && ui.inputFocused]}
-    />
-  );
-}
+const StyledSafeAreaView = styled(SafeAreaView);
+
+// <StyledSafeAreaView className="app-shell" edges={['top', 'bottom']} />
 ```
 
-Use `ui.inputInvalid` after `ui.inputFocused` for an error, and render the error text with `ui.fieldError`. Use `editable={false}` plus `ui.inputDisabled` to disable editing. Native textarea auto-growth requires `onContentSizeChange` and a height state; the preset provides a minimum height, not behavior.
+Component-specific props such as `SymbolView.tintColor` and `TextInput.placeholderTextColor` still use [color tokens](../../apps/mobile/src/styles/tokens.ts). Keep those colors aligned with `@theme` when changing the palette. All review layout and typography now come from Tailwind; the old `styles/ui.ts` presets were removed after migrating their only screen consumer.
 
-## Reference
+Browser-only selectors are isolated under `@supports selector(div > div)` in `globals.css`. Native layout uses flexbox. Tailwind preflight also applies to web, so check authentication screens when changing global rules. Build success does not replace a device check for safe areas, shadows, text scaling, or third-party components.
 
-| Element | Web classes | Native styles |
-| --- | --- | --- |
-| Canvas / screen | `app-shell`, `screen` | `appShell`, `screen`, `screenTablet` |
-| Layout | `stack`, `row`, `row-between`, `wrap`, `full-width` | `stack`, `row`, `rowBetween`, `wrap`, `fullWidth` |
-| Gaps | `gap-sm`, `gap-lg`, `gap-xl` | `gapSm`, `gapLg`, `gapXl` |
-| Cards | `card`, `card-prompt`, `card-floating` | `card`, `cardPrompt`, `cardFloating` |
-| Card sections | `card-header`, `card-excerpt` | `cardHeader`, `cardExcerpt` |
-| Primary button | `btn-primary` | `btnPrimary` + `btnPrimaryText` |
-| Other buttons | `btn-secondary`, `btn-danger`, `btn-ghost` | `btnSecondary`, `btnDanger`, `btnGhost` + corresponding `Text` style |
-| Mastered / review / critical | `chip-success`, `chip-warning`, `chip-danger` | `chipSuccess`, `chipWarning`, `chipDanger` + corresponding `Text` style |
-| Chip dot | `chip-dot` inside a chip | `chipDot` + `dotSuccess`, `dotWarning`, or `dotDanger` |
-| Input | `field`, `input`, `input-search`, `textarea`, `field-error` | `field`, `input`, `inputSearch`, `textarea`, `fieldError` |
-| Concept list | `list`, `list-row` | `list`, `listRow`, `listRowDivider` on rows after the first |
-| Strength meter | `strength-meter`, `strength-segment`, `is-filled` | `strengthMeter`, `strengthSegment`, `strengthFilled` |
-| Recording | `action-zone`, `record-button`, `is-recording` | `actionZone`, `recordButton`, `recording` |
-| Waveform | `waveform`, `waveform-bar` | `waveform`, `waveformBar` |
-| Metrics | `tabular-nums` | `tabularNums` |
-| Text utilities | `text-secondary`, `text-muted`, `text-primary`, `text-center`, `link` | `textSecondary`, `textMuted`, `textPrimary`, `textCenter`, `link` |
+## Static design preview
 
-Typography: `display-lg` (28px on phones, 36px at 600px+), `display-lg-mobile`, `headline-lg/md/sm`, `body-lg/md/sm`, and `label-lg/md/sm`. Native uses camelCase; choose `displayLgMobile` / `displayLg` from the current width. Native letter spacing converts the source's `em` values to pixels.
+Raw `globals.css` now requires compilation. From `apps/mobile`, run:
 
-Web `layout-grid` has 4 columns below 600px and 8 above, with `layout-main` and `layout-aside` spanning the full width on phones and 5/3 columns on larger screens. Native: combine `layoutGrid` + conditional `layoutGridTablet`, and apply `layoutMainTablet` / `layoutAsideTablet` to the children at 600px+. Safe-area padding is automatic in web `screen`; use `useSafeAreaInsets()` for native. Avoid adding the same inset twice if an enclosing navigator already handles it.
+```sh
+bun run design:preview
+```
 
-## Fonts, states, and scope
+Open `docs/design/dist/index.html` in a browser. The command compiles the actual Tailwind stylesheet and copies the existing reference HTML alongside it. Generated preview files are ignored by Git. The HTML source is included in Tailwind's `@source` paths, so classes used only by the preview are generated too.
 
-- **Font loading:** CSS declares Plus Jakarta Sans, but font binaries are not bundled. Load it using a self-hosted `@font-face` before expecting that exact typeface; otherwise the system fallback is used. On native, load/register your fonts using the existing `expo-font` dependency, then call `createUIStyles('YourRegisteredFontFamily')`. For separately registered weight files, assign the corresponding registered family on text styles; `fontWeight` alone cannot select unrelated family names. The exported `ui` deliberately uses system fonts until then.
-- **Accessibility:** use real web buttons and their `disabled` attribute. `aria-disabled` styles alone do not block events on links or custom elements. Provide visible labels for fields, labels for icon-only recording controls, error descriptions (`aria-describedby`), and text labels for status/strength indicators. Destructive button text uses the darker diagnostic rose for readability. Inputs use 16px type to avoid focus zoom on mobile browsers; other type sizes follow the design.
-- **Motion:** web hover/press/focus/disabled states and a reduced-motion override are included. Native recording pulses and waveform amplitude updates must be driven by the audio UI; styles do not implement recording. Set web `--amplitude` or native bar height from real amplitude data. Native `boxShadow`/outline presets target this project's React Native 0.86 setup; shadow rendering can vary on older Android devices.
-- **Theme:** apply `app-shell` / `ui.appShell` to a new light-design screen. Avoid nesting dark `ThemedView` defaults inside light cards; use plain `View` / `Text` with these presets or explicitly override their styles. These are reusable building blocks, not an automatic redesign of existing screens.
-- **Maintenance:** update matching colors in `globals.css` and `styles/tokens.ts` together. CSS dimensions use rem (16px baseline); native uses density-independent units and native text scaling. The shared names make the mapping explicit without adding a CSS-to-native library.
+## Verification
 
-Platform reference: [Expo web CSS](https://docs.expo.dev/guides/tailwind/) and [Expo font loading](https://docs.expo.dev/develop/user-interface/fonts/).
+From `apps/mobile`:
+
+```sh
+bun run typecheck
+bun run design:preview
+bunx expo export --platform all --output-dir /tmp/explain-back-export --max-workers 2
+```
+
+Static web export additionally needs the app's normal Clerk configuration and valid Expo Router routes. On a device, check the review screen's scrolling, input placeholder wrapping, bottom navigation, safe areas, and text scaling. This migration adds no app functionality.
+
+References: [NativeWind installation](https://www.nativewind.dev/v5/getting-started/installation), [configuration](https://www.nativewind.dev/v5/customization/configuration), [Tailwind custom styles](https://tailwindcss.com/docs/adding-custom-styles).
