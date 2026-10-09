@@ -4,7 +4,7 @@ import express, {
   type NextFunction,
 } from "express";
 import { clerkMiddleware } from "@clerk/express";
-import authRoutes from "./routers/authRoutes.js";
+import authRoutes from "./features/auth/auth.routes.js";
 import { sendError } from "./lib/errors.js";
 
 export const app = express();
