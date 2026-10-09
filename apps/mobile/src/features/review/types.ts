@@ -13,11 +13,11 @@ export type ReviewQuestion = {
 
 export type ReviewEvaluation = {
   score: number;
-  correct: number;
+  correct: boolean;
   feedback: string;
 };
 
 export type ReviewScheduleDecision = {
   intervalDays: number;
-  nextReviewAt: string;
+  nextReviewAt: Date;
 };

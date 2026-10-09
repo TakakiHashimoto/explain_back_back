@@ -1,13 +1,13 @@
-import { KnowledgeGap } from '../types';
+import type { KnowledgeGap, ReviewQuestion } from '../types';
 
-const knowledgeGap: KnowledgeGap = {
+export const knowledgeGap: KnowledgeGap = {
   id: 'fake-knowledgegap-id-1',
   concept: 'Dependency comparison',
   misconception: 'React watches dependency variables.',
   severity: 4,
 };
 
-const ReviewQuestion = {
+export const reviewQuestion: ReviewQuestion = {
   id: 'fake-review-question-id-1',
   gapId: 'fake-knowledgegap-id-1',
   question: 'How does React determine whether a dependency changed between renders?',
