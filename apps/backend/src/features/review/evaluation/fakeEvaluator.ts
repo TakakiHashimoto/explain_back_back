@@ -1,4 +1,10 @@
-export function evaluateAnswer(answer: string) {
+import { KnowledgeGap, ReviewQuestion } from "../types.js";
+
+export function evaluateAnswer(
+  answer: string,
+  knowledgeGap: KnowledgeGap,
+  reviewQuestion: ReviewQuestion,
+) {
   // validate input
   // shape the input
   // pass to the AI api

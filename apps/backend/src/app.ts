@@ -10,6 +10,7 @@ import { sendError } from "./lib/errors.js";
 export const app = express();
 
 app.use(express.json());
+// checks request cookies and headers for session tokens, then attaches an authentication object to the Express request
 app.use(clerkMiddleware());
 
 // health check end point
