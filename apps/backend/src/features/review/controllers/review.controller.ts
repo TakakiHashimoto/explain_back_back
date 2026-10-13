@@ -29,5 +29,5 @@ async function reviewAnswers(req: Request, res: Response, next: NextFunction) {
   const reviewRes = evaluateAnswer(body, knowledgeG, reviewQ);
   const schedule = scheduleReview(reviewRes.score, new Date());
 
-  return "";
+  return res.status(200).json({ data: { ...reviewRes, ...schedule } });
 }
