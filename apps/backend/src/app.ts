@@ -11,13 +11,12 @@ import { sendError } from "./lib/errors.js";
 export const app = express();
 
 app.use(express.json());
-// checks request cookies and headers for session tokens, then attaches an authentication object to the Express request
-app.use(clerkMiddleware());
-
 // health check end point
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
+// checks request cookies and headers for session tokens, then attaches an authentication object to the Express request
+app.use(clerkMiddleware());
 
 app.use("/api/v1/me", authRoutes);
 app.use("/api/v1/review-questions", reviewRouter);
