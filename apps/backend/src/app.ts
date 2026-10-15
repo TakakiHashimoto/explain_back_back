@@ -5,6 +5,7 @@ import express, {
 } from "express";
 import { clerkMiddleware } from "@clerk/express";
 import authRoutes from "./features/auth/auth.routes.js";
+import reviewRouter from "./features/review/routes/review.router.js";
 import { sendError } from "./lib/errors.js";
 
 export const app = express();
@@ -19,6 +20,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/v1/me", authRoutes);
+app.use("/api/v1/review-questions", reviewRouter);
 
 app.use((_req, res) => {
   sendError(res, "NOT_FOUND");
