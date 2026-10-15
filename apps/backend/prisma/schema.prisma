@@ -17,4 +17,71 @@ model User {
   authSubject String   @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  explanations Explanation[]
+}
+
+model Explanation {
+  id         String   @id @default(uuid())
+  userId     String
+  topic      String
+  transcript String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id])
+  knowledgeGaps KnowledgeGap[]
+
+  @@index([userId, createdAt])
+}
+
+model KnowledgeGap {
+  id            String   @id @default(uuid())
+  explanationId String
+  concept       String
+  misconception String   @db.Text
+  severity      Int
+  createdAt     DateTime @default(now())
+
+  explanation    Explanation     @relation(fields: [explanationId], references: [id])
+  reviewQuestion ReviewQuestion?
+
+  @@index([explanationId])
+}
+
+model ReviewQuestion {
+  id        String   @id @default(uuid())
+  gapId     String   @unique
+  question  String   @db.Text
+  createdAt DateTime @default(now())
+
+  knowledgeGap KnowledgeGap    @relation(fields: [gapId], references: [id])
+  attempts     ReviewAttempt[]
+  schedule     ReviewSchedule?
+}
+
+model ReviewAttempt {
+  id         String   @id @default(uuid())
+  questionId String
+  answer     String   @db.Text
+  score      Int
+  correct    Boolean
+  feedback   String   @db.Text
+  createdAt  DateTime @default(now())
+
+  question ReviewQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([questionId, createdAt])
+}
+
+model ReviewSchedule {
+  id           String   @id @default(uuid())
+  questionId   String   @unique
+  intervalDays Int
+  nextReviewAt DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  question ReviewQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([nextReviewAt])
 }
