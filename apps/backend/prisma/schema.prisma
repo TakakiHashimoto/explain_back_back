@@ -12,13 +12,55 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id          String   @id @default(uuid())
-  authSubject String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum Plan {
+  FREE
+  PRO
+}
 
+enum UsageKind {
+  ANALYSIS
+  REVIEW
+}
+
+enum UsageStatus {
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  authSubject        String    @unique
+  usageWindowStartAt DateTime?
+  usageWindowPlan    Plan?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  usageRecords UsageRecord[]
+  entitlement  Entitlement?
   explanations Explanation[]
+}
+
+model Entitlement {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime?
+  source    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model UsageRecord {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      UsageKind
+  status    UsageStatus @default(IN_PROGRESS)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId, kind, createdAt])
 }
 
 model Explanation {
