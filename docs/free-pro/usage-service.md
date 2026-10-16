@@ -11,11 +11,11 @@
 
 - `reserveUsage(userId, kind)`：上限を確認し、「実行中」の利用レコードを1件作ってその id を返す。上限なら `AppError` を投げる（→ 429）。
 - `completeUsage(id, succeeded)`：その利用レコードを「成功」または「失敗」にする。失敗は回数に数えない。
-- 実装：[usage.ts](../../apps/backend/src/service/usage.ts)
+- 実装：[usage.service.ts](../../apps/backend/src/features/usage/usage.service.ts)
 
 ## 1. reserveUsage
 
-[usage.ts:120](../../apps/backend/src/service/usage.ts#L120-L177)
+[usage.service.ts:120](../../apps/backend/src/features/usage/usage.service.ts#L120-L177)
 
 ```ts
 reserveUsage(userId: string, kind: UsageKind): Promise<string>
@@ -37,11 +37,11 @@ reserveUsage(userId: string, kind: UsageKind): Promise<string>
 2. 現在のプラン（FREE / PRO）を決め、必要なら新しい7日間ウィンドウを始める（初回利用・7日経過・プラン切り替え）。
 3. ウィンドウ開始以降の `SUCCEEDED` と「10分以内の `IN_PROGRESS`」を数え、上限未満ならレコードを作る。
 
-上限の値は [const.ts:3](../../apps/backend/src/lib/const.ts#L3-L6) の `LIMITS`、10分は [const.ts:10](../../apps/backend/src/lib/const.ts#L10) の `IN_PROGRESS_TIMEOUT_MS`。
+上限の値は [usage.const.ts:3](../../apps/backend/src/features/usage/usage.const.ts#L3-L6) の `LIMITS`、10分は [usage.const.ts:10](../../apps/backend/src/features/usage/usage.const.ts#L10) の `IN_PROGRESS_TIMEOUT_MS`。
 
 ## 2. completeUsage
 
-[usage.ts:185](../../apps/backend/src/service/usage.ts#L185-L190)
+[usage.service.ts:185](../../apps/backend/src/features/usage/usage.service.ts#L185-L190)
 
 ```ts
 completeUsage(id: string, succeeded: boolean): Promise<void>
@@ -78,7 +78,8 @@ flowchart LR
 実装例（A の分析。B は `"REVIEW"` に変えて回答1件ごとに同じ形）。`parseAnalysisInput` と `runAnalysis` は各自の処理の代わりである。
 
 ```ts
-import { completeUsage, reserveUsage } from "../service/usage.js";
+// Path from a router at features/<feature>/routes/*.routes.ts
+import { completeUsage, reserveUsage } from "../../usage/usage.service.js";
 
 // requireUser must run before this handler (req.user is our internal User)
 router.post("/analyses", async (req, res) => {
@@ -102,11 +103,11 @@ router.post("/analyses", async (req, res) => {
 
 `try / finally` にする理由：途中で例外が出ても `completeUsage(id, false)` が呼ばれ、失敗分がすぐに枠へ戻る。例外はそのまま共通 error handler に届く。
 
-実際に動く例として [devRoutes.ts](../../apps/backend/src/router/devRoutes.ts) も参考になる（start / complete / fail の3パターン）。
+実際に動く例として [dev.routes.ts](../../apps/backend/src/features/usage/routes/dev.routes.ts) も参考になる（start / complete / fail の3パターン）。
 
 ## 4. エラー処理
 
-`reserveUsage` の上限エラーは **catch せずにそのまま投げる**。[app.ts:32](../../apps/backend/src/app.ts#L32-L47) の共通 error handler が [AppError](../../apps/backend/src/lib/errors.ts#L19-L23) を受け取り、次の JSON を返す（Express 5 なので async handler の reject も自動で届く）。
+`reserveUsage` の上限エラーは **catch せずにそのまま投げる**。[app.ts:36](../../apps/backend/src/app.ts#L36-L51) の共通 error handler が [AppError](../../apps/backend/src/lib/errors.ts#L19-L23) を受け取り、次の JSON を返す（Express 5 なので async handler の reject も自動で届く）。
 
 | ケース | HTTP status | `error.code` | アプリの表示 |
 |---|---|---|---|
@@ -134,7 +135,7 @@ router.post("/analyses", async (req, res) => {
 
 ## 6. 関連
 
-- [usage.ts:28](../../apps/backend/src/service/usage.ts#L28-L88) `getUsage(userId, now)`：使用数・上限・ウィンドウ終了時刻を返す。[authRoutes.ts:13](../../apps/backend/src/router/authRoutes.ts#L13) の `GET /api/v1/me/entitlement` が使っている。上限の判定には使わず、`reserveUsage` に任せる。
+- [usage.service.ts:28](../../apps/backend/src/features/usage/usage.service.ts#L28-L88) `getUsage(userId, now)`：使用数・上限・ウィンドウ終了時刻を返す。[usage.routes.ts:9](../../apps/backend/src/features/usage/routes/usage.routes.ts#L9) の `GET /api/v1/me/entitlement` が使っている。上限の判定には使わず、`reserveUsage` に任せる。
 - 動作確認用の開発ルート（`NODE_ENV !== "production"` のときだけ）：`POST /api/v1/dev/{analysis,review}/{start,complete,fail}`。使い方は README §6。
 
 ## 7. 未決定 / すり合わせが必要
