@@ -21,6 +21,9 @@ export async function requireUser(
   res: Response,
   next: NextFunction,
 ) {
+  // Already resolved by an earlier router on the same path; skip the extra DB upsert.
+  if (req.user) return next();
+
   const { isAuthenticated, userId } = getAuth(req);
 
   if (!isAuthenticated) {

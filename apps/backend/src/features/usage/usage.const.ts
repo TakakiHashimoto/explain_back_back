@@ -1,4 +1,4 @@
-import { Plan, UsageKind } from "../generated/prisma/enums.js";
+import { Plan, UsageKind } from "../../generated/prisma/enums.js";
 
 export const LIMITS = {
   PRO: { ANALYSIS: 20, REVIEW: 120 },

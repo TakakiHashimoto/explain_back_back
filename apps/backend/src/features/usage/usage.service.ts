@@ -1,8 +1,8 @@
-import { Plan, UsageKind } from "../generated/prisma/enums.js";
-import { IN_PROGRESS_TIMEOUT_MS, LIMITS, WINDOW_MS } from "../lib/const.js";
-import { AppError } from "../lib/errors.js";
-import { prisma } from "../lib/prisma.js";
-import { getPlan } from "./entitlement.js";
+import { Plan, UsageKind } from "../../generated/prisma/enums.js";
+import { IN_PROGRESS_TIMEOUT_MS, LIMITS, WINDOW_MS } from "./usage.const.js";
+import { AppError } from "../../lib/errors.js";
+import { prisma } from "../../lib/prisma.js";
+import { getPlan } from "./entitlement/entitlement.service.js";
 
 type Usage = {
   isPro: boolean;

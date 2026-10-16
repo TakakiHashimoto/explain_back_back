@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { completeUsage, reserveUsage } from "../../service/usage.js";
-import { requireUser } from "../../middleware/require-user.js";
+import { completeUsage, reserveUsage } from "../usage.service.js";
+import { requireUser } from "../../../middleware/require-user.js";
 
 const router = Router();
 

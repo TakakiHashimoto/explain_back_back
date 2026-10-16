@@ -5,7 +5,8 @@ import express, {
 } from "express";
 import { clerkMiddleware } from "@clerk/express";
 import authRoutes from "./features/auth/auth.routes.js";
-import devRoutes from "./features/usage/dev.routes.js";
+import devRoutes from "./features/usage/routes/dev.routes.js";
+import usageRoutes from "./features/usage/routes/usage.routes.js";
 import { AppError, sendError } from "./lib/errors.js";
 import reviewRouter from "./features/review/routes/review.router.js";
 
@@ -20,6 +21,7 @@ app.get("/health", (_req, res) => {
 app.use(clerkMiddleware());
 
 app.use("/api/v1/me", authRoutes);
+app.use("/api/v1/me", usageRoutes);
 app.use("/api/v1/review-questions", reviewRouter);
 
 // test endpoint
