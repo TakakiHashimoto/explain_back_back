@@ -29,22 +29,24 @@ enum UsageStatus {
 }
 
 model User {
-  id                 String        @id @default(uuid())
-  authSubject        String        @unique // Clerk id
-  usageWindowStartAt DateTime? // null = no window yet (first use starts one)
-  usageWindowPlan    Plan? // plan the current window started under
-  usageRecords       UsageRecord[]
-  entitlement        Entitlement?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  id                 String    @id @default(uuid())
+  authSubject        String    @unique
+  usageWindowStartAt DateTime?
+  usageWindowPlan    Plan?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  usageRecords UsageRecord[]
+  entitlement  Entitlement?
+  explanations Explanation[]
 }
 
 model Entitlement {
   id        String    @id @default(uuid())
   userId    String    @unique
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime? // null = no expiration (lifetime entitlement), otherwise the date/time the entitlement expires
-  source    String // The source of the entitlement, e.g. "revenuecat", "manual", "promo", etc.
+  expiresAt DateTime?
+  source    String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -59,4 +61,69 @@ model UsageRecord {
   updatedAt DateTime    @updatedAt
 
   @@index([userId, kind, createdAt])
+}
+
+model Explanation {
+  id         String   @id @default(uuid())
+  userId     String
+  topic      String
+  transcript String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id])
+  knowledgeGaps KnowledgeGap[]
+
+  @@index([userId, createdAt])
+}
+
+model KnowledgeGap {
+  id            String   @id @default(uuid())
+  explanationId String
+  concept       String
+  misconception String   @db.Text
+  severity      Int
+  createdAt     DateTime @default(now())
+
+  explanation    Explanation     @relation(fields: [explanationId], references: [id])
+  reviewQuestion ReviewQuestion?
+
+  @@index([explanationId])
+}
+
+model ReviewQuestion {
+  id        String   @id @default(uuid())
+  gapId     String   @unique
+  question  String   @db.Text
+  createdAt DateTime @default(now())
+
+  knowledgeGap KnowledgeGap    @relation(fields: [gapId], references: [id])
+  attempts     ReviewAttempt[]
+  schedule     ReviewSchedule?
+}
+
+model ReviewAttempt {
+  id         String   @id @default(uuid())
+  questionId String
+  answer     String   @db.Text
+  score      Int
+  correct    Boolean
+  feedback   String   @db.Text
+  createdAt  DateTime @default(now())
+
+  question ReviewQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([questionId, createdAt])
+}
+
+model ReviewSchedule {
+  id           String   @id @default(uuid())
+  questionId   String   @unique
+  intervalDays Int
+  nextReviewAt DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  question ReviewQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([nextReviewAt])
 }

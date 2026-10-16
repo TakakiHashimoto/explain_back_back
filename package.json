@@ -2,6 +2,9 @@
   "name": "explain-it-back",
   "version": "0.0.0",
   "private": true,
+  "overrides": {
+    "lightningcss": "1.30.1"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"

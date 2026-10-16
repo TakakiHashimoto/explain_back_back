@@ -1,36 +1,14 @@
 import { useAuth, useClerk, useUser } from '@clerk/expo';
 import { useEffect } from 'react';
-import * as Device from 'expo-device';
-import { Platform, Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
 import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
-/** Displays Expo development hints with the current user's email and a sign-out control. */
+/** Displays the current user's email and a sign-out control, and bootstraps their backend account. */
 export default function HomeScreen() {
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -56,36 +34,20 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            Explain It Back
           </ThemedText>
         </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
             title="Signed in as"
             hint={<ThemedText type="code">{user?.primaryEmailAddress?.emailAddress}</ThemedText>}
           />
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/(tabs)/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
           <Pressable onPress={() => signOut()}>
             <ThemedText type="linkPrimary">Sign out</ThemedText>
           </Pressable>
         </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
       </SafeAreaView>
     </ThemedView>
   );
@@ -114,9 +76,6 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
   },
   stepContainer: {
     gap: Spacing.three,

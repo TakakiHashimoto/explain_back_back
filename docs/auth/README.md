@@ -68,11 +68,11 @@ const userId = req.user!.id;
 
 `req.user` に入っているもの（`prisma/schema.prisma` の `User`）：
 
-| フィールド | 内容 |
-|---|---|
-| `id` | **内部の UUID**。他のテーブルから参照するのはこれ |
-| `authSubject` | Clerk のユーザー ID。`User` テーブルの中だけで使う |
-| `createdAt` / `updatedAt` | 作成・更新日時 |
+| フィールド                | 内容                                               |
+| ------------------------- | -------------------------------------------------- |
+| `id`                      | **内部の UUID**。他のテーブルから参照するのはこれ  |
+| `authSubject`             | Clerk のユーザー ID。`User` テーブルの中だけで使う |
+| `createdAt` / `updatedAt` | 作成・更新日時                                     |
 
 ## 4. ID のルール
 
@@ -92,10 +92,14 @@ Clerk の ID（`authSubject`）を、他のテーブルに持たせない。認�
 
 ```ts
 // ❌ body の userId をそのまま使う：他人になりすませる
-await prisma.topic.create({ data: { title: req.body.title, userId: req.body.userId } });
+await prisma.topic.create({
+  data: { title: req.body.title, userId: req.body.userId },
+});
 
 // ✅ token から決まった req.user を使う
-await prisma.topic.create({ data: { title: req.body.title, userId: req.user!.id } });
+await prisma.topic.create({
+  data: { title: req.body.title, userId: req.user!.id },
+});
 ```
 
 mobile 側も、request の body や URL に自分の `userId` を入れて送る必要はない。
@@ -109,7 +113,9 @@ mobile 側も、request の body や URL に自分の `userId` を入れて送�
 
 ```ts
 // 例：Topic を1件読む（Topic はまだ存在しないモデル）
-const topic = await prisma.topic.findUnique({ where: { id: req.params.topicId } });
+const topic = await prisma.topic.findUnique({
+  where: { id: req.params.topicId },
+});
 
 if (!topic || topic.userId !== req.user!.id) {
   sendError(res, "NOT_FOUND"); // 存在しない場合も、他人のものの場合も同じ返し方

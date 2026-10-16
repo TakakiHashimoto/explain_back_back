@@ -4,21 +4,23 @@ import express, {
   type NextFunction,
 } from "express";
 import { clerkMiddleware } from "@clerk/express";
-import authRoutes from "./router/authRoutes.js";
-import devRoutes from "./router/devRoutes.js";
+import authRoutes from "./features/auth/auth.routes.js";
+import devRoutes from "./features/auth/auth.routes.js";
 import { AppError, sendError } from "./lib/errors.js";
+import reviewRouter from "./features/review/routes/review.router.js";
 
 export const app = express();
 
 app.use(express.json());
-app.use(clerkMiddleware());
-
 // health check end point
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
+// checks request cookies and headers for session tokens, then attaches an authentication object to the Express request
+app.use(clerkMiddleware());
 
 app.use("/api/v1/me", authRoutes);
+app.use("/api/v1/review-questions", reviewRouter);
 
 // test endpoint
 if (process.env.NODE_ENV !== "production") {
