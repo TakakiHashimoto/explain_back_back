@@ -5,7 +5,7 @@ import express, {
 } from "express";
 import { clerkMiddleware } from "@clerk/express";
 import authRoutes from "./features/auth/auth.routes.js";
-import devRoutes from "./features/auth/auth.routes.js";
+import devRoutes from "./features/usage/dev.routes.js";
 import { AppError, sendError } from "./lib/errors.js";
 import reviewRouter from "./features/review/routes/review.router.js";
 
