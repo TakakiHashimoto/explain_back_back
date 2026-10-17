@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { apiFetch } from '@/lib/api-fetch';
 import { router } from 'expo-router';
+import UsageSummaryCard from '@/features/usage/components/UsageSummaryCard';
 
 /** Displays the current user's email and a sign-out control, and bootstraps their backend account. */
 export default function HomeScreen() {
@@ -35,6 +36,8 @@ export default function HomeScreen() {
             Explain It Back
           </ThemedText>
         </ThemedView>
+
+        <UsageSummaryCard />
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow

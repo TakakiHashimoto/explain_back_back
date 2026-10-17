@@ -1,12 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { useClerk, useUser } from '@clerk/expo';
 import { ThemedText } from '@/components/themed-text';
-import type { Entitlement } from '../types';
-
-const dummyUsage: Entitlement = {
-  isPro: false,
-  usage: { analyses: { used: 2, limit: 3 }, reviews: { used: 2, limit: 3 } },
-};
+import { dummyEntitlement } from '../data/dummy';
 
 function ProfileScreen() {
   const { user } = useUser();
@@ -17,7 +12,7 @@ function ProfileScreen() {
       <ThemedText>Profile</ThemedText>
       <View>
         <ThemedText>{user?.primaryEmailAddress?.emailAddress}</ThemedText>
-        <ThemedText>Plan: {dummyUsage.isPro ? 'Pro' : 'Free'}</ThemedText>
+        <ThemedText>Plan: {dummyEntitlement.isPro ? 'Pro' : 'Free'}</ThemedText>
       </View>
       <View>
         <Pressable onPress={() => signOut()}>
