@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { apiFetch } from '@/lib/api-fetch';
+import { router } from 'expo-router';
 
 /** Displays the current user's email and a sign-out control, and bootstraps their backend account. */
 export default function HomeScreen() {
@@ -42,6 +43,9 @@ export default function HomeScreen() {
           />
           <Pressable onPress={() => signOut()}>
             <ThemedText type="linkPrimary">Sign out</ThemedText>
+          </Pressable>
+          <Pressable onPress={() => router.push('/review/test')}>
+            <ThemedText type="linkPrimary">Review (test)</ThemedText>
           </Pressable>
         </ThemedView>
       </SafeAreaView>
