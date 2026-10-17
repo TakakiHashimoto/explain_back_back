@@ -7,6 +7,7 @@ import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { apiFetch } from '@/lib/api-fetch';
 
 /** Displays the current user's email and a sign-out control, and bootstraps their backend account. */
 export default function HomeScreen() {
@@ -17,12 +18,7 @@ export default function HomeScreen() {
   useEffect(() => {
     const bootstrapUser = async () => {
       try {
-        console.log(process.env.EXPO_PUBLIC_API_URL);
-        const token = await getToken();
-        const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('/api/v1/me', res.status, await res.json());
+        await apiFetch('/api/v1/me', getToken);
       } catch (e) {
         console.warn('/api/v1/me failed', e);
       }
