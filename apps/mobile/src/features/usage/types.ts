@@ -1,4 +1,4 @@
-export type Usage = {
+export type Entitlement = {
   isPro: boolean;
   usage: {
     analyses: {
