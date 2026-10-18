@@ -1,10 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { Prisma } from "../../../generated/prisma/client.js";
-import { openai } from "../../../lib/ai/openai.js";
-import { QuestionSchema } from "../validation/questionSchema.js";
 import { prisma } from "../../../lib/prisma.js";
-import { zodTextFormat } from "openai/helpers/zod.js";
-import { reviewQuestionInstructions } from "../generation/reveiwQuestionInstructions.js";
+import { generateQuestion } from "../generation/generateReviewQuestion.js";
 
 export async function generateReviewQuestion(
   req: Request,
@@ -33,27 +30,11 @@ export async function generateReviewQuestion(
       return res.status(200).json({ data: foundGap.reviewQuestion });
     }
 
-    const aiRes = await openai.responses.parse({
-      model: "gpt-6-luna",
-      instructions: reviewQuestionInstructions,
-      input: JSON.stringify({
-        concept: foundGap.concept,
-        misconception: foundGap.misconception,
-        severity: foundGap.severity,
-      }),
-      text: {
-        format: zodTextFormat(QuestionSchema, "review_question"),
-      },
-    });
-    if (aiRes.status !== "completed" || !aiRes.output_parsed) {
-      return res
-        .status(500)
-        .json({ error: "Review question generation failed" });
-    }
+    const question = await generateQuestion(foundGap);
 
     try {
       const reviewQ = await prisma.reviewQuestion.create({
-        data: { gapId, question: aiRes.output_parsed.question },
+        data: { gapId, question },
       });
 
       return res.status(201).json({ data: reviewQ });
