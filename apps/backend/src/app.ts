@@ -6,6 +6,7 @@ import express, {
 import { clerkMiddleware } from "@clerk/express";
 import authRoutes from "./features/auth/auth.routes.js";
 import reviewRouter from "./features/review/routes/review.router.js";
+import reviewQuestionRouter from "./features/review/routes/reviewQuestion.router.js";
 import { sendError } from "./lib/errors.js";
 
 export const app = express();
@@ -20,6 +21,7 @@ app.use(clerkMiddleware());
 
 app.use("/api/v1/me", authRoutes);
 app.use("/api/v1/review-questions", reviewRouter);
+app.use("/api/v1/knowledge-gaps", reviewQuestionRouter);
 
 app.use((_req, res) => {
   sendError(res, "NOT_FOUND");
