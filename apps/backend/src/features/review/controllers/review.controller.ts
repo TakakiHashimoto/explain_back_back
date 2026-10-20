@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { evaluateAnswer } from "../evaluation/fakeEvaluator.js";
+import { evaluateAnswer } from "../evaluation/answerEvaluator.js";
 import { prisma } from "../../../lib/prisma.js";
 import { scheduleReview } from "../scheduling/schedulReview.js";
 
@@ -43,7 +43,7 @@ export async function reviewAnswers(
     }
 
     // evaluate the body and get result
-    const reviewRes = evaluateAnswer(
+    const reviewRes = await evaluateAnswer(
       answer.trim(),
       reviewQ.knowledgeGap,
       reviewQ,
