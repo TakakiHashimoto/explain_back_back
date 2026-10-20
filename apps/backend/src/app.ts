@@ -9,6 +9,7 @@ import devRoutes from "./features/usage/routes/dev.routes.js";
 import usageRoutes from "./features/usage/routes/usage.routes.js";
 import { AppError, sendError } from "./lib/errors.js";
 import reviewRouter from "./features/review/routes/review.router.js";
+import reviewQuestionRouter from "./features/review/routes/reviewQuestion.router.js";
 
 export const app = express();
 
@@ -23,6 +24,7 @@ app.use(clerkMiddleware());
 app.use("/api/v1/me", authRoutes);
 app.use("/api/v1/me", usageRoutes);
 app.use("/api/v1/review-questions", reviewRouter);
+app.use("/api/v1/knowledge-gaps", reviewQuestionRouter);
 
 // test endpoint
 if (process.env.NODE_ENV !== "production") {
