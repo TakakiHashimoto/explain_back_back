@@ -57,7 +57,6 @@ export default function HomeScreen() {
         <UsageSummaryCard />
         <Text className="h-[500px] card">Dummy</Text>
       </ScrollView>
-      <AppTabBar />
     </StyledSafeAreaView>
   );
 }
