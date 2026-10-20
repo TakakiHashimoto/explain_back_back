@@ -244,7 +244,7 @@ explain-back/
 │   └── mobile/
 ├── packages/
 ├── package.json
-├── package-lock.json
+├── bun.lock
 └── .gitignore
 ```
 
@@ -269,7 +269,7 @@ Architecture examples are not folder-name commandments.
 The shared repository foundation is considered complete.
 
 ```text
-Monorepo / npm workspaces                 ✓
+Monorepo / bun workspaces                 ✓
 Root development commands                ✓
 Expo SDK / Expo Router                    ✓
 React Native + TypeScript                 ✓
