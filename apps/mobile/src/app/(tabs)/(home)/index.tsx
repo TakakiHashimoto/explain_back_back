@@ -1,20 +1,27 @@
-import { useAuth, useClerk, useUser } from '@clerk/expo';
+import { useAuth, useUser } from '@clerk/expo';
+import { styled } from 'nativewind';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset } from '@/constants/theme';
+import { UsageSummaryCard } from '@/features/usage/components/UsageSummaryCard';
 import { apiFetch } from '@/lib/api-fetch';
-import { router } from 'expo-router';
-import UsageSummaryCard from '@/features/usage/components/UsageSummaryCard';
+import { AppHeader } from '@/components/app-header';
+import { AppTabBar } from '@/components/app-tab-bar';
 
-/** Displays the current user's email and a sign-out control, and bootstraps their backend account. */
+// SafeAreaView is a third-party component, so explicitly enable className.
+const StyledSafeAreaView = styled(SafeAreaView);
+
+function greeting(hour: number): string {
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/** Home dashboard (design "Home"); also bootstraps the user's backend account. */
 export default function HomeScreen() {
   const { user } = useUser();
-  const { signOut } = useClerk();
   const { getToken } = useAuth();
 
   useEffect(() => {
@@ -28,63 +35,29 @@ export default function HomeScreen() {
     bootstrapUser();
   }, [getToken]);
 
+  const name = user?.firstName;
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <ThemedText type="title" style={styles.title}>
-            Explain It Back
-          </ThemedText>
-        </ThemedView>
-
+    <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right']}>
+      <AppHeader title="" />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="w-full max-w-[600px] self-center gap-md px-margin pt-lg"
+        contentContainerStyle={{ paddingBottom: BottomTabInset + 20 }}
+      >
+        <View className="gap-xs">
+          <Text className="text-muted uppercase tracking-[0.9px] label-sm">
+            {greeting(new Date().getHours())}
+            {name ? `, ${name}` : ''}
+          </Text>
+          <Text className="display-lg-mobile">What did you learn today?</Text>
+        </View>
+        <Text className="h-[100px] card">Dummy</Text>
+        <Text className="h-[100px] card">Dummy</Text>
         <UsageSummaryCard />
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Signed in as"
-            hint={<ThemedText type="code">{user?.primaryEmailAddress?.emailAddress}</ThemedText>}
-          />
-          <Pressable onPress={() => signOut()}>
-            <ThemedText type="linkPrimary">Sign out</ThemedText>
-          </Pressable>
-          <Pressable onPress={() => router.push('/review/test')}>
-            <ThemedText type="linkPrimary">Review (test)</ThemedText>
-          </Pressable>
-        </ThemedView>
-      </SafeAreaView>
-    </ThemedView>
+        <Text className="h-[500px] card">Dummy</Text>
+      </ScrollView>
+      <AppTabBar />
+    </StyledSafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});

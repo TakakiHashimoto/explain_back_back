@@ -45,7 +45,7 @@ function UsageMeter({ label, used, limit }: UsageMeterProps) {
         accessibilityLabel={`${used} of ${limit} ${label.toLowerCase()} used`}
       >
         <View
-          className="h-full rounded-full"
+          className="rounded-full h-full"
           style={{
             width: `${ratio * 100}%`,
             backgroundColor: mixColor(colors.primary, colors.warning, ratio),
@@ -57,7 +57,7 @@ function UsageMeter({ label, used, limit }: UsageMeterProps) {
 }
 
 /** Shows the current plan and this window's analysis / review usage (Home, design "Free plan · this week"). */
-export default function UsageSummaryCard() {
+export function UsageSummaryCard() {
   const [state, setState] = useState<State>({ status: 'loading' });
 
   const { getToken } = useAuth();
@@ -90,7 +90,7 @@ export default function UsageSummaryCard() {
   const { isPro, usage } = state.entitlement;
 
   return (
-    <View className="gap-[10px] bg-surface-muted px-md py-[14px] rounded-lg w-full">
+    <View className="gap-[10px] card-muted">
       <View className="flex-row justify-between items-center">
         <Text className="font-sans font-bold text-[11px] text-text-muted uppercase leading-[14px] tracking-[0.9px]">
           {isPro ? 'Pro' : 'Free'} plan · this week
