@@ -52,23 +52,23 @@ const ReviewQuestionClient = (_props: { questionId: string }) => {
   return (
     <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right', 'bottom']}>
       <View className="bg-background shadow-card">
-        <View className="row-between w-full max-w-[600px] self-center min-h-16 px-margin py-sm gap-sm">
-          <View className="row flex-1 min-w-0">
+        <View className="self-center gap-sm px-margin py-sm w-full max-w-[600px] min-h-16 row-between">
+          <View className="flex-1 min-w-0 row">
             <Image
               accessibilityLabel="Explain It Back App Icon"
               source={{
                 uri: 'https://lh3.googleusercontent.com/aida/AEtjO1Xrx4o-5LYSgaW1a8hL7lndjAOpG0opvA5jGCeaPYocajwrEBlUY4PM6GT4_9T2OcoOhW4hKkc3bjFC53cnCn1zPNaQ3l6KwbqCBhzh8Ze7aBUPxArY-1bLuvrUut45TJzZ-JMtBpQcDkmvFvNKbbgUMVi0B2BOZ5ugUyn0QwVxh7CsIIh2Tlbv8dENcNsGzGoI9MXOOoZvt8it8YswlXlbhR_qidu3D_HgX97LVhb46d-BoV5DBxdDPg8',
               }}
-              className="h-8 w-8"
+              className="w-8 h-8"
               resizeMode="contain"
             />
             <View className="flex-1 min-w-0">
               <Text className="headline-sm">Explain It Back</Text>
-              <Text className="label-sm text-muted">Review</Text>
+              <Text className="text-muted label-sm">Review</Text>
             </View>
           </View>
           <View className="row">
-            <View accessibilityLabel="Notifications" className="h-11 w-11 items-center justify-center">
+            <View accessibilityLabel="Notifications" className="justify-center items-center w-11 h-11">
               <Icon name="notifications" size={22} />
             </View>
             <Image
@@ -76,63 +76,63 @@ const ReviewQuestionClient = (_props: { questionId: string }) => {
               source={{
                 uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuClpeK1EFHWl5EM1GfCr5rRZdZwgMhs9ptUrg-3wEJUxT0-aJzbuEu6nt_IfFuzLQQGqCbZnW9as3VagrfQDqaSyHBrqXtn5qJLPxpl4tg584etrtNIYK_Rtbew3q6k8jpW4_qfgqBO4rqbhMvUkngvCZSZnlFm6SUYpxTRtKWNWd_b8sAgF0SEYc94XxjmKNXkPkCUM3VhVawIORLqraEzvIODJdNo8xRtJmQjQRTcOBVppOIQOXTn',
               }}
-              className="h-8 w-8 rounded-full"
+              className="rounded-full w-8 h-8"
             />
           </View>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="grow pb-xl">
-        <View className="screen stack max-w-[600px]">
+        <View className="max-w-[600px] screen stack">
           <View className="row-between">
             <View accessibilityLabel="Cancel session" className="review-circle">
               <Icon name="close" />
             </View>
-            <View className="flex-1 min-w-0 items-center gap-xs">
+            <View className="flex-1 items-center gap-xs min-w-0">
               <View className="row">
-                <View className="h-2 w-2 rounded-full bg-primary" />
+                <View className="bg-primary rounded-full w-2 h-2" />
                 <Text className="label-md">React useEffect</Text>
               </View>
-              <Text className="label-sm text-muted text-center">Active Mental Model Check</Text>
+              <Text className="text-muted text-center label-sm">Active Mental Model Check</Text>
             </View>
             <View accessibilityLabel="Targeted recall item 1 of 3" className="review-circle">
-              <Text className="label-sm text-primary">1/3</Text>
+              <Text className="text-primary label-sm">1/3</Text>
             </View>
           </View>
 
-          <View className="chip-danger border-0 px-3 py-1.5 max-w-full">
+          <View className="px-3 py-1.5 border-0 max-w-full chip-danger">
             <Icon name="error" size={16} color={colors.danger} />
-            <Text className="label-sm text-danger-text shrink tracking-[-0.2px]">
+            <Text className="text-danger-text tracking-[-0.2px] label-sm shrink">
               Reviewing Misconception: {knowledgeGap.concept}
             </Text>
           </View>
 
-          <View className="card border-0 gap-sm">
+          <View className="gap-sm border-0 card">
             <View className="row-between">
-              <Text className="label-sm text-primary tracking-[1px]">THE CORE QUESTION</Text>
+              <Text className="text-primary tracking-[1px] label-sm">THE CORE QUESTION</Text>
               <Icon name="psychology" color={colors.primary} />
             </View>
             <Text accessibilityRole="header" className="headline-md">
               {reviewQuestion.question}
             </Text>
-            <View className="row bg-surface-muted p-[10px] rounded-md">
+            <View className="bg-surface-muted p-[10px] rounded-md row">
               <Icon name="lightbulb" size={18} color={colors.primary} />
-              <Text className="body-sm text-muted flex-1 min-w-0">
+              <Text className="flex-1 min-w-0 text-muted body-sm">
                 Answer from memory in your own words. Explain the exact mechanism rather than just
                 syntax.
               </Text>
             </View>
           </View>
 
-          <View className="card border-0 gap-sm">
-            <View className="row-between flex-wrap gap-sm">
+          <View className="gap-sm border-0 card">
+            <View className="flex-wrap gap-sm row-between">
               <View className="row">
                 <Icon name="edit" size={18} color={colors.primary} />
                 <Text className="label-sm">Your Mental Model</Text>
               </View>
-              <View className="row gap-xs">
+              <View className="gap-xs row">
                 <Icon name="lock" size={14} color={colors.placeholder} />
-                <Text className="label-sm text-placeholder">No hints active</Text>
+                <Text className="text-placeholder label-sm">No hints active</Text>
               </View>
             </View>
             <TextInput
@@ -142,46 +142,46 @@ const ReviewQuestionClient = (_props: { questionId: string }) => {
               textAlignVertical="top"
               placeholder="Explain your answer here... e.g., what does React compare, which JavaScript algorithm is used, and what happens to object references?"
               placeholderTextColor={colors.placeholder}
-              className="textarea text-[15px] leading-[22px] bg-surface-muted border-0 p-[14px]"
+              className="bg-surface-muted p-[14px] border-0 text-[15px] leading-[22px] textarea"
             />
-            <View className="row-between flex-wrap gap-sm pt-xs">
-              <Text className="label-sm text-muted">
-                <Text className="text-text font-semibold">0</Text> / 600 words &amp; chars
+            <View className="flex-wrap gap-sm pt-xs row-between">
+              <Text className="text-muted label-sm">
+                <Text className="font-semibold text-text">0</Text> / 600 words &amp; chars
               </Text>
-              <View className="row rounded-full px-3 py-1.5 bg-surface-muted gap-[6px] shadow-card">
+              <View className="gap-[6px] bg-surface-muted shadow-card px-3 py-1.5 rounded-full row">
                 <Icon name="mic" size={18} color={colors.primary} />
                 <Text className="label-sm">Speak answer</Text>
               </View>
             </View>
           </View>
 
-          <View className="stack gap-sm pt-sm">
-            <View className="btn-primary shadow-card">
+          <View className="gap-sm pt-sm stack">
+            <View className="shadow-card btn-primary">
               <Text className="btn-primary-text">Submit Answer</Text>
               <Icon name="arrow" color={colors.onPrimary} />
             </View>
-            <View className="row justify-center gap-xs">
+            <View className="justify-center gap-xs row">
               <Icon name="verified" size={15} color={colors.placeholder} />
-              <Text className="label-sm text-muted shrink text-center">
+              <Text className="text-muted text-center label-sm shrink">
                 Evaluated against accurate mental model criteria
               </Text>
             </View>
           </View>
 
-          <View className="stack gap-sm bg-surface-muted rounded-md p-md mt-sm">
-            <View className="row-between flex-wrap gap-sm">
+          <View className="gap-sm bg-surface-muted mt-sm p-md rounded-md stack">
+            <View className="flex-wrap gap-sm row-between">
               <View className="row">
                 <Icon name="tips" size={18} color={colors.warning} />
                 <Text className="label-md">Why is this item flagged?</Text>
               </View>
-              <View className="bg-warning-soft rounded-sm px-sm py-0.5">
-                <Text className="label-sm text-warning-text">Past Gap</Text>
+              <View className="bg-warning-soft px-sm py-0.5 rounded-sm">
+                <Text className="text-warning-text label-sm">Past Gap</Text>
               </View>
             </View>
-            <Text className="body-sm text-muted">
+            <Text className="text-muted body-sm">
               In your last session, you mentioned React does a &quot;deep check on objects&quot;.
               Recall whether{' '}
-              <Text className="font-mono text-[12px] bg-divider text-secondary">Object.is</Text>{' '}
+              <Text className="bg-divider font-mono text-[12px] text-secondary">Object.is</Text>{' '}
               verifies values or memory references.
             </Text>
           </View>
@@ -189,20 +189,20 @@ const ReviewQuestionClient = (_props: { questionId: string }) => {
       </ScrollView>
 
       <View className="px-margin py-sm">
-        <View className="w-full max-w-[448px] self-center min-h-16 flex-row items-center px-sm rounded-full bg-surface shadow-floating">
+        <View className="flex-row items-center self-center bg-surface shadow-floating px-sm rounded-full w-full max-w-[448px] min-h-16">
           {tabs.map(({ icon, label }) =>
             icon === 'mic' ? (
               <View
                 key={icon}
                 accessibilityLabel="Speak"
-                className="h-[52px] w-[52px] -mt-5 mx-xs items-center justify-center rounded-full bg-primary shadow-floating"
+                className="justify-center items-center bg-primary shadow-floating mx-xs -mt-5 rounded-full w-[52px] h-[52px]"
               >
                 <Icon name="mic" size={26} color={colors.onPrimary} />
               </View>
             ) : (
               <View
                 key={icon}
-                className="flex-1 min-h-16 items-center justify-center gap-0.5"
+                className="flex-1 justify-center items-center gap-0.5 min-h-16"
                 accessibilityLabel={icon === 'review' ? 'Review, 3 items' : label}
               >
                 <View>
@@ -212,8 +212,8 @@ const ReviewQuestionClient = (_props: { questionId: string }) => {
                     color={icon === 'review' ? colors.primary : colors.textMuted}
                   />
                   {icon === 'review' && (
-                    <View className="absolute -top-1 -right-2 h-4 w-4 rounded-full bg-danger items-center justify-center">
-                      <Text className="label-sm text-on-primary text-[10px] leading-[12px]">3</Text>
+                    <View className="-top-1 -right-2 absolute justify-center items-center bg-danger rounded-full w-4 h-4">
+                      <Text className="text-[10px] text-on-primary leading-[12px] label-sm">3</Text>
                     </View>
                   )}
                 </View>
