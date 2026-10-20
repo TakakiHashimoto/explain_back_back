@@ -3,6 +3,7 @@ import { evaluateAnswer } from "../evaluation/fakeEvaluator.js";
 import { prisma } from "../../../lib/prisma.js";
 import { scheduleReview } from "../scheduling/schedulReview.js";
 
+// This is the controller for having AI review the user's answer and calculate the schedule for next review
 export async function reviewAnswers(
   req: Request,
   res: Response,

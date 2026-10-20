@@ -3,6 +3,8 @@ import { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../../lib/prisma.js";
 import { generateQuestion } from "../generation/generateReviewQuestion.js";
 
+// This is the controller for having AI generate review qeustion based on the user's gap
+// gap id is sent from frontend
 export async function generateReviewQuestion(
   req: Request,
   res: Response,

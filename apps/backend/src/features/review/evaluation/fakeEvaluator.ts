@@ -11,7 +11,7 @@ export function evaluateAnswer(
   // shape the result
   // return the result
 
-  // for now it always return same, fake evaluation
+  // for now it always returns same, fake evaluation
   return {
     score: 91,
     correct: true,
