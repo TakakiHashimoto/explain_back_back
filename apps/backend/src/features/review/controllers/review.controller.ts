@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { evaluateAnswer } from "../evaluation/answerEvaluator.js";
 import { prisma } from "../../../lib/prisma.js";
 import { scheduleReview } from "../scheduling/schedulReview.js";
+import { saveReviewResult } from "../services/saveReviewResult.js";
 
 // This is the controller for having AI review the user's answer and calculate the schedule for next review
 export async function reviewAnswers(
@@ -50,7 +51,14 @@ export async function reviewAnswers(
     );
     const schedule = scheduleReview(reviewRes.score, new Date());
 
-    return res.status(200).json({ data: { reviewRes, schedule } });
+    const result = await saveReviewResult(
+      questionId,
+      answer.trim(),
+      reviewRes,
+      schedule,
+    );
+
+    return res.status(200).json({ data: result });
   } catch (error) {
     next(error);
   }
