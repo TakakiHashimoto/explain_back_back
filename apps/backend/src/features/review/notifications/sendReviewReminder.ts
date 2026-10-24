@@ -1,6 +1,7 @@
 export async function sendReviewReminder(
   userId: string,
   dueCount: number,
+  idempotencyKey: string,
 ): Promise<string> {
   // 1. Validate function arguments
   if (!userId.trim()) {
@@ -9,6 +10,10 @@ export async function sendReviewReminder(
 
   if (!Number.isInteger(dueCount) || dueCount <= 0) {
     throw new Error("Due count must be a positive integer");
+  }
+
+  if (!idempotencyKey.trim()) {
+    throw new Error("Idempotency key is required");
   }
 
   // 2. Read environment configuration
@@ -22,6 +27,7 @@ export async function sendReviewReminder(
   // 3. Construct the notification payload
   const payload = {
     app_id: appId,
+    idempotency_key: idempotencyKey,
     include_aliases: {
       external_id: [userId],
     },
