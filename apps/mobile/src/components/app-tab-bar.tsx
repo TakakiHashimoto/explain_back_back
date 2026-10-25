@@ -16,7 +16,9 @@ const routeIcons: Partial<Record<string, ComponentProps<typeof Icon>['name']>> =
   progress: 'progress',
 };
 
-export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
+export const TAB_BAR_HEIGHT = 64 + 8; // min-h-16 + pt-sm
+
+export function AppTabBar({ state, descriptors, navigation, insets }: TabBarProps) {
   const tabs = state.routes.map((route) => {
     const icon = routeIcons[route.name];
 
@@ -56,16 +58,14 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
         accessibilityRole="tab"
         accessibilityState={isFocused ? { selected: true } : {}}
       >
-        <View>
-          {icon && (
-            <Icon name={icon} size={22} color={isFocused ? colors.primary : colors.textMuted} />
-          )}
-          {icon === 'review' && (
-            <View className="-top-1 -right-2 absolute justify-center items-center bg-danger rounded-full w-4 h-4">
-              <Text className="text-[10px] text-on-primary leading-[12px] label-sm">3</Text>
-            </View>
-          )}
-        </View>
+        {icon && (
+          <Icon name={icon} size={22} color={isFocused ? colors.primary : colors.textMuted} />
+        )}
+        {icon === 'review' && (
+          <View className="-top-1 -right-2 absolute justify-center items-center bg-danger rounded-full w-4 h-4">
+            <Text className="text-[10px] text-on-primary leading-[12px] label-sm">3</Text>
+          </View>
+        )}
         <Text className={`label-sm ${isFocused ? 'text-primary' : 'text-muted'}`}>{label}</Text>
       </Pressable>
     );
@@ -77,7 +77,11 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const rightTabs = tabs.slice(mid);
 
   return (
-    <View className="px-margin py-sm">
+    <View
+      className="bottom-0 absolute inset-x-0 px-margin pt-sm"
+      style={{ paddingBottom: insets.bottom + 8 }}
+      pointerEvents="box-none"
+    >
       <View
         className="flex-row items-center self-center bg-surface shadow-floating px-sm rounded-full w-full max-w-[448px] min-h-16"
         accessibilityRole="tablist"

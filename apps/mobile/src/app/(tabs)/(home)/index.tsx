@@ -2,12 +2,12 @@ import { useAuth, useUser } from '@clerk/expo';
 import { styled } from 'nativewind';
 import { useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BottomTabInset } from '@/constants/theme';
 import { UsageSummaryCard } from '@/features/usage/components/UsageSummaryCard';
 import { apiFetch } from '@/lib/api-fetch';
 import { AppHeader } from '@/components/app-header';
+import { TAB_BAR_HEIGHT } from '@/components/app-tab-bar';
 
 // SafeAreaView is a third-party component, so explicitly enable className.
 const StyledSafeAreaView = styled(SafeAreaView);
@@ -22,6 +22,7 @@ function greeting(hour: number): string {
 export default function HomeScreen() {
   const { user } = useUser();
   const { getToken } = useAuth();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const bootstrapUser = async () => {
@@ -42,7 +43,7 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerClassName="w-full max-w-[600px] self-center gap-md px-margin pt-lg"
-        contentContainerStyle={{ paddingBottom: BottomTabInset + 20 }}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 20 }}
       >
         <View className="gap-xs">
           <Text className="text-muted uppercase tracking-[0.9px] label-sm">
