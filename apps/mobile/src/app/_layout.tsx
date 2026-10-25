@@ -5,8 +5,14 @@ import { tokenCache } from '@clerk/expo/token-cache';
 import { DarkTheme, DefaultTheme, Slot, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-
 import { notifications } from '@/features/notifications/onesignal';
+import { colors } from '@/styles/tokens';
+
+// Navigator containers and screens without `app-shell` use the theme background; match the design token.
+const LightTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: colors.background },
+};
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 
@@ -23,7 +29,7 @@ export default function TabLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
         <Slot />
       </ThemeProvider>
     </ClerkProvider>
