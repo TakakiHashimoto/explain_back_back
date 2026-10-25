@@ -1,7 +1,7 @@
 # エラーハンドリングの使い方（backend）
 
 > 対象：backend に route / middleware を追加するメンバー
-> 方針（なぜこの形か）は `docs/spec.md` §59 Error Contract を参照。この資料は「どう使うか」をまとめたもの。
+> 方針（なぜこの形か）は `docs/spec.md` §57「エラーの形式」を参照。この資料は「どう使うか」をまとめたもの。
 > 最終更新：2026-10-02
 
 ## 要点（3行）
@@ -96,7 +96,7 @@ router.get("/", (req, res) => {
    ```ts
    FORBIDDEN: { status: 403, message: "You do not have permission to access this resource." },
    ```
-2. `docs/spec.md` §59 の code 一覧に載っていなければ足す（チームの contract なので）。
+2. `docs/spec.md` §57 の code 一覧に載っていなければ足す（チームの contract なので）。
 3. 下の「6. 現在の code 一覧」を更新する。
 4. PR の description に「code を追加した」と書く。mobile 側の対応が必要になることがあるため。
 

@@ -1,7 +1,7 @@
 # 認証の使い方（backend）
 
 > 対象：backend に、ログインが必要な route を追加するメンバー
-> 方針（なぜこの形か）は `docs/spec.md` §9 Authentication and Application Identity を参照。この資料は「どう使うか」をまとめたもの。
+> 方針（なぜこの形か）は `docs/spec.md` §12〜§14「アカウントと本人確認」を参照。この資料は「どう使うか」をまとめたもの。
 > エラーの返し方は `docs/error-handling/README.md` を参照。
 > 最終更新：2026-10-02
 
