@@ -8,7 +8,6 @@ import { BottomTabInset } from '@/constants/theme';
 import { UsageSummaryCard } from '@/features/usage/components/UsageSummaryCard';
 import { apiFetch } from '@/lib/api-fetch';
 import { AppHeader } from '@/components/app-header';
-import { AppTabBar } from '@/components/app-tab-bar';
 
 // SafeAreaView is a third-party component, so explicitly enable className.
 const StyledSafeAreaView = styled(SafeAreaView);
