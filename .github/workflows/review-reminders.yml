@@ -1,0 +1,43 @@
+name: Due Review Reminders
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: due-review-reminders
+  cancel-in-progress: false
+
+jobs:
+  reminders:
+    name: Run notification worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: apps/backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        working-directory: .
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bunx prisma generate --config prisma7.config.ts
+
+      - name: Run notification worker
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NOTIFICATION_DRY_RUN: "true"
+        run: bun scripts/run-due-review-reminders.ts
