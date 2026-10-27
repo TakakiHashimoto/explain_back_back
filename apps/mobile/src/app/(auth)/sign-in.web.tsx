@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
 
+/** Renders Clerk's web sign-in form within the screen's safe area. */
 export default function SignInScreen() {
   return (
     <ThemedView style={styles.container}>

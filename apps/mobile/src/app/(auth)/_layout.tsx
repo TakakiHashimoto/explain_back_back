@@ -1,6 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { Redirect, Stack } from 'expo-router';
 
+/** Renders the sign-in routes after Clerk loads, redirecting signed-in users to the tabs. */
 export default function AuthLayout() {
   const { isLoaded, isSignedIn } = useAuth();
 
@@ -9,4 +10,3 @@ export default function AuthLayout() {
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }
-

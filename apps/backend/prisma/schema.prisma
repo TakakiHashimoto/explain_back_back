@@ -12,9 +12,152 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Plan {
+  FREE
+  PRO
+}
+
+enum UsageKind {
+  ANALYSIS
+  REVIEW
+}
+
+enum UsageStatus {
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+}
+
 model User {
-  id          String   @id @default(uuid())
-  authSubject String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  authSubject        String    @unique
+  usageWindowStartAt DateTime?
+  usageWindowPlan    Plan?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  usageRecords UsageRecord[]
+  entitlement  Entitlement?
+  explanations Explanation[]
+  reviewReminders ReviewReminder[]
+}
+
+model Entitlement {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime?
+  source    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model UsageRecord {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      UsageKind
+  status    UsageStatus @default(IN_PROGRESS)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId, kind, createdAt])
+}
+
+model Explanation {
+  id         String   @id @default(uuid())
+  userId     String
+  topic      String
+  transcript String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id])
+  knowledgeGaps KnowledgeGap[]
+
+  @@index([userId, createdAt])
+}
+
+model KnowledgeGap {
+  id            String   @id @default(uuid())
+  explanationId String
+  concept       String
+  misconception String   @db.Text
+  severity      Int
+  createdAt     DateTime @default(now())
+
+  explanation    Explanation     @relation(fields: [explanationId], references: [id])
+  reviewQuestion ReviewQuestion?
+
+  @@index([explanationId])
+}
+
+model ReviewQuestion {
+  id        String   @id @default(uuid())
+  gapId     String   @unique
+  question  String   @db.Text
+  createdAt DateTime @default(now())
+
+  knowledgeGap KnowledgeGap    @relation(fields: [gapId], references: [id])
+  attempts     ReviewAttempt[]
+  schedule     ReviewSchedule?
+}
+
+model ReviewAttempt {
+  id         String   @id @default(uuid())
+  questionId String
+  answer     String   @db.Text
+  score      Int
+  correct    Boolean
+  feedback   String   @db.Text
+  createdAt  DateTime @default(now())
+
+  question ReviewQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([questionId, createdAt])
+}
+
+model ReviewSchedule {
+  id           String   @id @default(uuid())
+  questionId   String   @unique
+  intervalDays Int
+  nextReviewAt DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  question ReviewQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([nextReviewAt])
+}
+
+
+enum ReviewReminderStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model ReviewReminder {
+  id             String               @id @default(uuid())
+  userId         String
+  reminderDate   DateTime             @db.Date
+  idempotencyKey String               @unique @default(uuid())
+  dueCount       Int
+  status         ReviewReminderStatus @default(PENDING)
+
+  claimToken     String?
+  leaseExpiresAt DateTime?
+  attempts       Int                  @default(0)
+
+  onesignalId    String?
+  lastError      String?              @db.Text
+  sentAt         DateTime?
+
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reminderDate])
+  @@index([status, leaseExpiresAt])
 }

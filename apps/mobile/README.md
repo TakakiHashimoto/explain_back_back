@@ -1,56 +1,60 @@
-# Welcome to your Expo app 👋
+# mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo app (Expo Router, Clerk) for explain_back_back.
 
-## Get started
+Setup and run instructions live in the [root README](../../README.md).
+Run commands from the repository root (e.g. `bun run dev:android`), not from this folder.
 
-1. Install dependencies
+Reusable UI styles and web/native examples: [design system guide](../../docs/design/README.md).
 
-   ```bash
-   npm install
-   ```
+## OneSignal push notifications
 
-2. Start the app
+The iOS and Android development builds initialize OneSignal with App ID
+`4ef89c9c-db70-4019-9b48-5cbd71f70e87`. All SDK calls live in
+`src/features/notifications/onesignal.ts`, initialized by the root layout. Web and
+Expo Go skip the native SDK. Identity, email/SMS, and tag methods are available in
+the wrapper; they are not automatically connected to Clerk or enrolled on launch.
 
-   ```bash
-   npx expo start
-   ```
+Dependencies are pinned to `react-native-onesignal` **5.5.15** and
+`onesignal-expo-plugin` **2.7.2**, the approved Current releases from the
+[official version manifest](https://onesignal.github.io/sdk-releases/releases.json)
+(neither package had a Stable entry when integrated).
 
-In the output, you'll find options to open the app in a
+The first Expo config plugin generates the iOS Notification Service Extension,
+shared App Group `group.com.anonymous.mobile.onesignal`, and push entitlements.
+The extension targets iOS 17.0, matching the app's Clerk plugin requirement. Background remote notifications
+are enabled in `app.json`. Both platform identifiers remain `com.anonymous.mobile`.
+Android links the SDK automatically; no `google-services.json` is needed for OneSignal.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+To verify from the repository root:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1. Configure APNs and FCM credentials in the OneSignal dashboard for this App ID.
+   Use credentials matching the existing app identifiers. iOS device builds also
+   need your Apple Developer Team and provisioning for the app and extension.
+2. Generate native projects after this config change:
+   `cd apps/mobile && bunx expo prebuild --no-install`, then return to the root.
+   Native directories are generated and gitignored; keep configuration in `app.json`.
+3. Rebuild and install with `bun run --filter @explain-it-back/mobile android`, or
+   `bun run --filter @explain-it-back/mobile ios` on macOS with Xcode/CocoaPods.
+   Use an Android device/emulator with Google Play Services or a supported iOS device.
+   Install over the existing app; do not uninstall or clear app data to re-test.
+4. A real server-assigned subscription ID displays the integration verification
+   dialog once per app process. Tap **Got it** to request push permission. No
+   permission request occurs automatically during initialization.
+5. Find that subscription in OneSignal and send it a test push. For iOS, also test
+   an image attachment to exercise the extension. Check that both signed targets
+   share the App Group and the main app embeds the extension.
 
-## Get a fresh project
+Before TestFlight/App Store builds, change both the plugin's `mode` and
+`ios.entitlements["aps-environment"]` in `app.json` to `production`, then regenerate
+and rebuild. Keep normal code signing enabled.
 
-When you're ready, run:
+Local checks:
 
-```bash
-npm run reset-project
+```sh
+bun run --filter @explain-it-back/mobile typecheck
+bun test apps/mobile/src/features/notifications/onesignal.test.ts
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+See the [OneSignal Expo setup](https://documentation.onesignal.com/docs/en/react-native-expo-sdk-setup)
+for platform credentials and native build troubleshooting.

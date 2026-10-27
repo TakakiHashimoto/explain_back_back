@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:reminders": "bun test scripts/review-reminders.test.ts",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
@@ -21,14 +22,17 @@
     "@types/pg": "^8.23.1",
     "prisma": "^7.10.0",
     "tsx": "^4.23.13",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "@types/bun": "latest"
   },
   "dependencies": {
+    "@clerk/express": "^2.1.69",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "openai": "^7.34.0",
     "pg": "^8.23.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   }
 }

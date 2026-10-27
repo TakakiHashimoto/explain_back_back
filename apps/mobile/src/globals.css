@@ -1,0 +1,354 @@
+/* Shared Tailwind / NativeWind design system. See docs/design/README.md. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+@source "./";
+@source "../../../docs/design/preview.html";
+
+/* Preserve the existing 16px baseline on native and web. */
+:root {
+  font-size: 16px;
+}
+
+@theme {
+  --color-background: #fbfbf9;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f6f2;
+  --color-text: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-placeholder: #94a3b8;
+  --color-border: #e7e5df;
+  --color-divider: #f1efe9;
+  --color-primary: #3b5ee8;
+  --color-primary-pressed: #2d4cd2;
+  --color-primary-lip: #203db5;
+  --color-primary-soft: #eef2ff;
+  --color-on-primary: #ffffff;
+  --color-success: #10b981;
+  --color-success-soft: #ecfdf5;
+  --color-success-border: #a7f3d0;
+  --color-success-text: #065f46;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+  --color-warning-border: #fde68a;
+  --color-warning-text: #92400e;
+  --color-danger: #f43f5e;
+  --color-danger-soft: #fff1f2;
+  --color-danger-border: #fecdd3;
+  --color-danger-text: #9f1239;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-margin: 20px;
+  --radius-sm: 4px;
+  --radius-default: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-prompt: 20px;
+  --radius-xl: 24px;
+  --breakpoint-tablet: 600px;
+  --shadow-card: 0 1px 3px rgb(15 23 42 / 3%), 0 6px 16px -4px rgb(15 23 42 / 5%);
+  --shadow-floating: 0 4px 6px -1px rgb(15 23 42 / 4%), 0 12px 28px -6px rgb(15 23 42 / 8%);
+  --shadow-pressed: 0 1px 2px rgb(15 23 42 / 4%);
+  --shadow-primary: 0 2px 0 #203db5;
+  --shadow-focus: 0 0 0 3px rgb(59 94 232 / 12%);
+}
+
+/* Container classes and text classes are separate for native components. */
+
+@utility app-shell {
+  @apply flex-1 bg-background;
+}
+
+@utility screen {
+  @apply w-full max-w-[1024px] self-center px-margin py-md;
+}
+
+@utility stack {
+  @apply flex flex-col gap-md;
+}
+
+@utility row {
+  @apply flex flex-row items-center gap-sm;
+}
+
+@utility row-between {
+  @apply flex flex-row items-center justify-between gap-md;
+}
+
+@utility wrap {
+  @apply flex-wrap;
+}
+
+@utility full-width {
+  @apply w-full;
+}
+
+@utility layout-grid {
+  @apply flex flex-col gap-md tablet:flex-row;
+}
+
+@utility layout-main {
+  @apply min-w-0 tablet:flex-[5];
+}
+
+@utility layout-aside {
+  @apply min-w-0 tablet:flex-[3];
+}
+
+@utility display-lg-mobile {
+  @apply font-sans text-[28px] leading-[34px] font-extrabold tracking-[-0.7px] text-text;
+}
+
+@utility display-lg {
+  @apply font-sans text-[28px] leading-[34px] font-extrabold tracking-[-0.7px] text-text tablet:text-[36px] tablet:leading-[44px] tablet:tracking-[-1.08px];
+}
+
+@utility headline-lg {
+  @apply font-sans text-[24px] leading-[32px] font-bold tracking-[-0.48px] text-text;
+}
+
+@utility headline-md {
+  @apply font-sans text-[20px] leading-[28px] font-semibold tracking-[-0.3px] text-text;
+}
+
+@utility headline-sm {
+  @apply font-sans text-[18px] leading-[24px] font-semibold tracking-[-0.18px] text-text;
+}
+
+@utility body-lg {
+  @apply font-sans text-[17px] leading-[26px] font-normal tracking-[-0.085px] text-text;
+}
+
+@utility body-md {
+  @apply font-sans text-[15px] leading-[22px] font-normal text-text;
+}
+
+@utility body-sm {
+  @apply font-sans text-[13px] leading-[18px] font-normal text-text;
+}
+
+@utility label-lg {
+  @apply font-sans text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-text;
+}
+
+@utility label-md {
+  @apply font-sans text-[12px] leading-[16px] font-semibold tracking-[0.24px] text-text;
+}
+
+@utility label-sm {
+  @apply font-sans text-[11px] leading-[14px] font-bold tracking-[0.44px] text-text;
+}
+
+@utility text-secondary {
+  @apply text-text-secondary;
+}
+
+@utility text-muted {
+  @apply text-text-muted;
+}
+
+@utility link {
+  @apply font-sans text-primary underline;
+}
+
+@utility card {
+  @apply rounded-lg border border-border bg-surface p-md shadow-card;
+}
+
+@utility card-prompt {
+  @apply rounded-prompt;
+}
+
+@utility card-floating {
+  @apply rounded-xl shadow-floating;
+}
+
+@utility card-header {
+  @apply flex flex-row items-center justify-between gap-sm mb-md;
+}
+
+@utility card-excerpt {
+  @apply font-sans text-[15px] leading-[22px] italic text-text-secondary my-md;
+}
+
+@utility chip-dot {
+  @apply h-[6px] w-[6px] shrink-0 rounded-full bg-current;
+}
+
+@utility field {
+  @apply flex flex-col gap-sm;
+}
+
+@utility input {
+  @apply font-sans w-full min-h-[48px] rounded-md border border-border bg-surface p-md text-[16px] leading-[24px] text-text;
+}
+
+@utility input-search {
+  @apply rounded-full;
+}
+
+@utility field-error {
+  @apply font-sans text-[13px] leading-[18px] text-danger-text;
+}
+
+@utility list {
+  @apply rounded-lg border border-border bg-surface;
+}
+
+@utility list-row {
+  @apply flex flex-row items-center justify-between gap-md p-md;
+}
+
+@utility list-row-divider {
+  @apply border-t border-divider;
+}
+
+@utility strength-meter {
+  @apply flex flex-row gap-[3px];
+}
+
+@utility strength-segment {
+  @apply w-4 h-[6px] rounded-full bg-border;
+}
+
+@utility strength-filled {
+  @apply bg-success;
+}
+
+@utility action-zone {
+  @apply flex flex-col items-center gap-md p-md;
+}
+
+@utility waveform {
+  @apply flex flex-row items-center justify-center gap-xs h-8;
+}
+
+@utility waveform-bar {
+  @apply w-1 h-2 max-h-full rounded-default bg-danger;
+}
+
+@utility review-circle {
+  @apply h-10 w-10 rounded-full bg-surface-muted items-center justify-center;
+}
+
+@utility btn-primary {
+  @apply flex flex-row items-center justify-center gap-sm rounded-full border px-6 py-3 min-h-[52px] border-transparent bg-primary shadow-primary;
+}
+
+@utility btn-primary-text {
+  @apply font-sans text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-center text-on-primary;
+}
+
+@utility btn-secondary {
+  @apply flex flex-row items-center justify-center gap-sm rounded-full border px-6 py-3 min-h-[48px] border-border bg-surface-muted;
+}
+
+@utility btn-secondary-text {
+  @apply font-sans text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-center text-text;
+}
+
+@utility btn-danger {
+  @apply flex flex-row items-center justify-center gap-sm rounded-full border px-6 py-3 min-h-[48px] border-danger-border bg-danger-soft;
+}
+
+@utility btn-danger-text {
+  @apply font-sans text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-center text-danger-text;
+}
+
+@utility btn-ghost {
+  @apply flex flex-row items-center justify-center gap-sm rounded-full border px-6 py-3 min-h-[48px] border-transparent bg-transparent;
+}
+
+@utility btn-ghost-text {
+  @apply font-sans text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-center text-primary;
+}
+
+@utility chip-success {
+  @apply flex flex-row self-start items-center gap-[6px] min-h-7 rounded-full border border-success-border bg-success-soft px-[10px] py-1;
+}
+
+@utility chip-success-text {
+  @apply font-sans text-[12px] leading-[16px] font-semibold text-success-text;
+}
+
+@utility chip-warning {
+  @apply flex flex-row self-start items-center gap-[6px] min-h-7 rounded-full border border-warning-border bg-warning-soft px-[10px] py-1;
+}
+
+@utility chip-warning-text {
+  @apply font-sans text-[12px] leading-[16px] font-semibold text-warning-text;
+}
+
+@utility chip-danger {
+  @apply flex flex-row self-start items-center gap-[6px] min-h-7 rounded-full border border-danger-border bg-danger-soft px-[10px] py-1;
+}
+
+@utility chip-danger-text {
+  @apply font-sans text-[12px] leading-[16px] font-semibold text-danger-text;
+}
+
+@utility textarea {
+  @apply font-sans w-full min-h-[160px] rounded-md border border-border bg-surface p-md text-[16px] leading-[24px] text-text;
+}
+
+@utility record-button {
+  @apply flex h-[72px] w-[72px] shrink-0 flex-row items-center justify-center rounded-full bg-primary shadow-floating;
+}
+
+/* DOM-only details for the static reference and web-authored components. */
+@supports selector(div > div) {
+  .app-shell {
+    min-height: 100dvh;
+    color: var(--color-text);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    color-scheme: light;
+  }
+
+  .screen { margin-inline: auto; }
+  button.btn-primary, button.record-button { @apply text-on-primary font-semibold; }
+  button.btn-secondary { @apply text-text font-semibold; }
+  button.btn-danger { @apply text-danger-text font-semibold; }
+  button.btn-ghost { @apply text-primary font-semibold; }
+  .chip-success { color: var(--color-success-text); }
+  .chip-warning { color: var(--color-warning-text); }
+  .chip-danger { color: var(--color-danger-text); }
+
+  :is(.btn-primary, .btn-secondary, .btn-danger, .btn-ghost, .record-button) {
+    cursor: pointer;
+    transition: background-color 150ms, box-shadow 150ms;
+  }
+  .btn-primary:active:not(:disabled) { @apply bg-primary-pressed shadow-pressed; }
+  :is(.btn-primary, .btn-secondary, .btn-danger, .btn-ghost, .record-button):disabled {
+    @apply opacity-50 shadow-none;
+    cursor: not-allowed;
+  }
+  :is(button, a, input, textarea):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+  }
+  .input::placeholder, .textarea::placeholder { @apply text-placeholder opacity-100; }
+  .input:focus, .textarea:focus { @apply border-primary shadow-focus; }
+  :is(.input, .textarea)[aria-invalid='true'] { @apply border-danger; }
+  :is(.input, .textarea):disabled { @apply opacity-60 bg-surface-muted; }
+  .textarea { resize: vertical; }
+  .list-row + .list-row { @apply border-t border-divider; }
+  .strength-segment.is-filled { @apply bg-success; }
+  .record-button.is-recording { @apply bg-danger; }
+  .waveform-bar { height: var(--amplitude, 25%); }
+
+  @media (hover: hover) {
+    .btn-primary:hover:not(:disabled) { @apply bg-primary-pressed; }
+    .btn-ghost:hover:not(:disabled) { @apply bg-primary-soft; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :is(.btn-primary, .btn-secondary, .btn-danger, .btn-ghost, .record-button) {
+      transition: none;
+    }
+  }
+}
