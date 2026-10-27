@@ -1,3 +1,4 @@
+import { getSafeErrorMessage } from "../../../lib/getSafeErrorMsg.js";
 import { prisma } from "../../../lib/prisma.js";
 
 export async function finishReminder(
@@ -27,8 +28,7 @@ export async function markReminderFailed(
   error: unknown,
 ): Promise<boolean> {
   // Avoid writing API keys, credentials, or sensitive input to logs/database.
-  const message =
-    error instanceof Error ? error.message : "Unknown notification error";
+  const message = getSafeErrorMessage(error);
   const result = await prisma.reviewReminder.updateMany({
     where: { id: reminderId, status: "PROCESSING", claimToken },
     data: {

@@ -1,3 +1,4 @@
+import { getSafeErrorMessage } from "../../../lib/getSafeErrorMsg.js";
 import { claimReminder } from "./claimReminder.js";
 import { createReminder } from "./createReminder.js";
 import { finishReminder, markReminderFailed } from "./finishReminder.js";
@@ -64,12 +65,7 @@ export async function sendDueReviewReminders(
         }
         summary.accepted++;
       } catch (e) {
-        const safeMessage = getSafeErrorMessage(e);
-        const marked = await markReminderFailed(
-          reminder.id,
-          token,
-          safeMessage,
-        );
+        const marked = await markReminderFailed(reminder.id, token, e);
         if (!marked) {
           console.error(
             "Unable to mark failure; claim no longer owned",
@@ -79,17 +75,15 @@ export async function sendDueReviewReminders(
         summary.failed++;
         console.error("Reminder processing failed", {
           reminderId: reminder.id,
-          reason: safeMessage,
+          reason: getSafeErrorMessage(e),
         });
       }
     } catch (e) {
       summary.failed++;
-      console.error("Reminder setup/claim failed", user.userId, e);
+      const safeErr = getSafeErrorMessage(e);
+      console.error("Reminder setup/claim failed", user.userId, safeErr);
     }
   }
 
   return summary;
-}
-function getSafeErrorMessage(error: any) {
-  throw new Error("Function not implemented.");
 }
