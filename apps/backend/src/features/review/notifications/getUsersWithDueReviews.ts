@@ -1,5 +1,5 @@
 // this function returns an array of users and due counts for each user
-// this is for distinguishing to whome we send notifications (users with due counts)
+// this is for distinguishing to whome we send notifications (users with due counts), who needs notifications
 
 import { prisma } from "../../../lib/prisma.js";
 
