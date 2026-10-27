@@ -23,7 +23,7 @@ export async function createReminder(
   );
 
   try {
-    return prisma.reviewReminder.upsert({
+    return await prisma.reviewReminder.upsert({
       where: { userId_reminderDate: { userId, reminderDate } },
       update: {},
       create: { userId, reminderDate, dueCount },
@@ -31,7 +31,7 @@ export async function createReminder(
   } catch (e) {
     if (
       e instanceof Prisma.PrismaClientKnownRequestError &&
-      e.code === "p2002"
+      e.code === "P2002"
     ) {
       const existing = await prisma.reviewReminder.findUnique({
         where: { userId_reminderDate: { userId, reminderDate } },
