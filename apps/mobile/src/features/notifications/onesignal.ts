@@ -2,6 +2,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Alert, Platform } from 'react-native';
 import type { PushSubscriptionChangedState } from 'react-native-onesignal';
 
+// TODO: Hide this app id
 const APP_ID = '4ef89c9c-db70-4019-9b48-5cbd71f70e87';
 
 let sdk: typeof import('react-native-onesignal') | undefined;
@@ -39,12 +40,14 @@ export const notifications = {
       Alert.alert(
         'Your OneSignal SDK integration is complete!',
         'You can now send Push Notifications & In-App Messages through OneSignal. Tap below to enable push notifications.',
-        [{
-          text: 'Got it',
-          onPress: () => {
-            void OneSignal.Notifications.requestPermission(true).catch(reportError);
+        [
+          {
+            text: 'Got it',
+            onPress: () => {
+              void OneSignal.Notifications.requestPermission(true).catch(reportError);
+            },
           },
-        }],
+        ],
         { cancelable: false },
       );
     };
