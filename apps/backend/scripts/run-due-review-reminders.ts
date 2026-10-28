@@ -1,28 +1,56 @@
 import "dotenv/config";
-import { sendDueReviewReminders } from "../src/features/review/notifications/sendDueReviewReminders.js";
-import { prisma } from "../src/lib/prisma.js";
+import type { sendDueReviewReminders } from "../src/features/review/notifications/sendDueReviewReminders.js";
+import { getSafeErrorMessage } from "../src/lib/getSafeErrorMsg.js";
 
-async function main() {
-  const now = new Date();
-  const dryRun = process.env.NOTIFICATION_DRY_RUN === "true";
+// Inject only the job boundaries so the CLI's window and error handling can be tested.
+export async function runReminderJob(
+  dependencies: {
+    run: typeof sendDueReviewReminders;
+    disconnect: () => Promise<void>;
+  },
+  { now = new Date(), env = process.env }: {
+    now?: Date;
+    env?: NodeJS.ProcessEnv;
+  } = {},
+): Promise<number> {
+  let exitCode = 0;
+  try {
+    const dryRun = env.NOTIFICATION_DRY_RUN === "true" ||
+      (env.GITHUB_ACTIONS === "true" && env.NOTIFICATION_DRY_RUN !== "false");
 
-  // MVP: reminder creation starts after 16:00 UTC each calendar day.
-  // Schedule the script hourly; the database ensures one reminder per day.
-  if (now.getUTCHours() < 16) {
-    console.log("Before daily UTC reminder window; skipping");
-    return;
+    // Only dry-run may bypass the daily 16:00 UTC sending window.
+    if (!dryRun && now.getUTCHours() < 16) {
+      console.log("Before daily UTC reminder window; skipping");
+    } else {
+      const summary = await dependencies.run(now, { dryRun });
+      console.log("Reminder job summary", summary);
+      if (summary.failed > 0) exitCode = 1;
+    }
+  } catch (error) {
+    console.error("Reminder job failed", getSafeErrorMessage(error));
+    exitCode = 1;
+  } finally {
+    try {
+      await dependencies.disconnect();
+    } catch (error) {
+      console.error("Reminder job disconnect failed", getSafeErrorMessage(error));
+      exitCode = 1;
+    }
   }
-
-  const summary = await sendDueReviewReminders(now, { dryRun });
-  console.log("Reminder job summary", summary);
-  if (summary.failed > 0) process.exitCode = 1;
+  return exitCode;
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error("Reminder job failed", error);
-  process.exitCode = 1;
-} finally {
-  await prisma.$disconnect();
+if (import.meta.main) {
+  try {
+    // Configuration/import failures must also go through the sanitizer.
+    const { sendDueReviewReminders } = await import("../src/features/review/notifications/sendDueReviewReminders.js");
+    const { prisma } = await import("../src/lib/prisma.js");
+    process.exitCode = await runReminderJob({
+      run: sendDueReviewReminders,
+      disconnect: () => prisma.$disconnect(),
+    });
+  } catch (error) {
+    console.error("Reminder job failed", getSafeErrorMessage(error));
+    process.exitCode = 1;
+  }
 }

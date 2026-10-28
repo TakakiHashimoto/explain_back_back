@@ -4,9 +4,9 @@ export function getSafeErrorMessage(error: unknown): string {
       return "Notification request timed out";
     }
 
-    const match = /^OneSignal HTTP ([0-9]{3})$/.exec(error.message);
+    const match = /^OneSignal HTTP ([45][0-9]{2})$/.exec(error.message);
 
-    if (match) {
+    if (match && match[0] === error.message) {
       return `OneSignal HTTP ${match[1]}`;
     }
   }

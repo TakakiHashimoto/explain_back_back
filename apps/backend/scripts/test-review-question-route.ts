@@ -8,10 +8,12 @@ import { mock } from "bun:test";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import type { KnowledgeGap } from "../src/features/review/types.js";
+import { getTestDatabaseUrl } from "./test-database.js";
 
 // Run from apps/backend: bun run scripts/test-review-question-route.ts
 // Real HTTP + Prisma + PostgreSQL; simulated Clerk identity and AI generation.
 // All database changes run inside a transaction that is always rolled back.
+process.env.DATABASE_URL = getTestDatabaseUrl();
 const question = "Why do Promise callbacks wait until the call stack is empty?";
 const subject = `route-test-${crypto.randomUUID()}`;
 const rollback = new Error("Rollback route-test fixtures");

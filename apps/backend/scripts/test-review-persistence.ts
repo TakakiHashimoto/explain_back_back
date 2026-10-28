@@ -3,15 +3,14 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { scheduleReview } from "../src/features/review/scheduling/schedulReview.js";
 import type { ReviewEvaluation } from "../src/features/review/types.js";
+import { getTestDatabaseUrl } from "./test-database.js";
 
 // Run from apps/backend: bun run scripts/test-review-persistence.ts
-// Prefer TEST_DATABASE_URL; otherwise use the configured DATABASE_URL.
+// Requires TEST_DATABASE_URL pointing to an isolated, migrated, disposable database.
 // Real service transactions commit independently. Only this run's fixtures are
 // removed in finally; an outer transaction would not clean up these writes.
 // This script imports neither the evaluator nor the OpenAI client.
-if (process.env.TEST_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
-}
+process.env.DATABASE_URL = getTestDatabaseUrl();
 
 async function main() {
   assert.ok(process.env.DATABASE_URL, "A database URL must be configured");

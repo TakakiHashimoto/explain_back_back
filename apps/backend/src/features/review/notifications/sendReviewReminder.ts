@@ -53,7 +53,7 @@ export async function sendReviewReminder(
 
   // 5. Reject unsuccessful HTTP responses
   if (!response.ok) {
-    throw new Error(`OneSignal request failed with status ${response.status}`);
+    throw new Error(`OneSignal HTTP ${response.status}`);
   }
 
   // 6. Verify that OneSignal created a notification

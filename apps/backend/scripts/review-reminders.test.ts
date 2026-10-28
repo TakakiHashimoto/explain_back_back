@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { Client } from "pg";
+import { getTestDatabaseUrl } from "./test-database.js";
+import { runReminderJob } from "./run-due-review-reminders.js";
 
 // Run against a migrated, disposable PostgreSQL database:
 // TEST_DATABASE_URL=postgresql://... bun run test:reminders
 // No fallback to the application's DATABASE_URL; no real HTTP requests.
-assert.ok(process.env.TEST_DATABASE_URL, "Set TEST_DATABASE_URL to a test database");
-const databaseUrl = new URL(process.env.TEST_DATABASE_URL);
+const previousDatabaseUrl = process.env.DATABASE_URL;
+const databaseUrl = new URL(getTestDatabaseUrl());
 const applicationName = `reminder-test-${randomUUID()}`;
 databaseUrl.searchParams.set("application_name", applicationName);
 process.env.DATABASE_URL = databaseUrl.toString();
@@ -18,6 +20,8 @@ const { prisma } = await import("../src/lib/prisma.js");
 const { claimReminder } = await import("../src/features/review/notifications/claimReminder.js");
 const { finishReminder, markReminderFailed } = await import("../src/features/review/notifications/finishReminder.js");
 const { sendReviewReminder } = await import("../src/features/review/notifications/sendReviewReminder.js");
+const { sendDueReviewReminders } = await import("../src/features/review/notifications/sendDueReviewReminders.js");
+const { createReminder } = await import("../src/features/review/notifications/createReminder.js");
 
 const userId = randomUUID();
 const now = new Date("2026-10-26T12:00:00.000Z");
@@ -81,6 +85,8 @@ afterAll(async () => {
     if (previousApiKey === undefined) delete process.env.ONESIGNAL_REST_API_KEY;
     else process.env.ONESIGNAL_REST_API_KEY = previousApiKey;
     await prisma.$disconnect();
+    if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDatabaseUrl;
   }
 });
 
@@ -166,7 +172,7 @@ describe("reminder transitions (real PostgreSQL)", () => {
     const failed = await state(reminder.id);
     expect(failed).toMatchObject({
       status: "FAILED", claimToken: null, leaseExpiresAt: null,
-      lastError: "send failed", attempts: 1,
+      lastError: "Notification processing failed", attempts: 1,
     });
     // Prisma sets updatedAt using real time, independently of claimReminder(now).
     for (const elapsed of [0, retryMs - 1]) {
@@ -239,7 +245,7 @@ describe("reminder transitions (real PostgreSQL)", () => {
   });
 
   test("claim -> simulated OneSignal send -> finish opens no Prisma transaction", async () => {
-    // This exercises the existing helpers, not a production dispatcher (none exists yet).
+    // Keep the helper-level regression alongside the full worker tests below.
     const requestsBefore = httpCalls;
     const { reminder, token } = await claimed();
     expect(httpCalls).toBe(requestsBefore);
@@ -254,7 +260,275 @@ describe("reminder transitions (real PostgreSQL)", () => {
     }
     expect(await finishReminder(reminder.id, token, notificationId, now)).toBe(true);
     expect(httpCalls).toBe(requestsBefore + 1);
+    const request = fetchSpy.mock.calls.at(-1)?.[1];
+    expect(JSON.parse(String(request?.body)).idempotency_key).toBe(reminder.idempotencyKey);
     expect(transactionCalls).toBe(0);
     expect((await state(reminder.id)).onesignalId).toBe("simulated-onesignal-id");
   });
+});
+
+// Each worker test owns its complete fixture tree. Future schedules keep fixtures
+// from other tests out of the worker's global eligibility query.
+async function withDueUser(run: (id: string) => Promise<void>) {
+  const id = randomUUID();
+  const explanationId = randomUUID();
+  const gapIds = [randomUUID(), randomUUID(), randomUUID()];
+  const questionIds = [randomUUID(), randomUUID(), randomUUID()];
+  await prisma.user.create({
+    data: {
+      id, authSubject: `worker-test-${id}`,
+      explanations: {
+        create: {
+          id: explanationId, topic: "Notification integration test",
+          knowledgeGaps: {
+            create: gapIds.map((gapId, index) => ({
+              id: gapId, concept: "Test concept", misconception: "Test misconception", severity: 1,
+              reviewQuestion: {
+                create: {
+                  id: questionIds[index]!, question: "Test question?",
+                  schedule: {
+                    create: {
+                      intervalDays: 1,
+                      nextReviewAt: new Date(now.getTime() + (index === 2 ? 60_000 : -60_000)),
+                    },
+                  },
+                },
+              },
+            })),
+          },
+        },
+      },
+    },
+  });
+  try {
+    await run(id);
+  } finally {
+    await prisma.reviewSchedule.deleteMany({ where: { questionId: { in: questionIds } } });
+    await prisma.reviewQuestion.deleteMany({ where: { id: { in: questionIds } } });
+    await prisma.knowledgeGap.deleteMany({ where: { id: { in: gapIds } } });
+    await prisma.explanation.deleteMany({ where: { id: explanationId } });
+    await prisma.user.deleteMany({ where: { id } });
+  }
+}
+
+async function userReminder(id: string) {
+  return prisma.reviewReminder.findUniqueOrThrow({
+    where: { userId_reminderDate: { userId: id, reminderDate: new Date("2026-10-26T00:00:00Z") } },
+  });
+}
+
+describe("full reminder worker (real PostgreSQL, mocked sends)", () => {
+  test.each([
+    [new Error("Authorization: Key secret-api-key; postgres://user:private@db/app"), "Notification processing failed"],
+    [{ message: "secret-api-key", headers: { authorization: "private" } }, "Notification processing failed"],
+    [undefined, "Notification processing failed"],
+    [new Error("OneSignal HTTP 500"), "OneSignal HTTP 500"],
+  ] as const)("failure %# clears the claim and lease and persists/logs only safe errors", async (error, safeMessage) => {
+    await withDueUser(async (id) => {
+      const log = spyOn(console, "error").mockImplementation(() => {});
+      let sends = 0;
+      try {
+        const summary = await sendDueReviewReminders(now, {
+          send: async () => {
+            sends++;
+            const processing = await userReminder(id);
+            expect(processing.status).toBe("PROCESSING");
+            expect(processing.claimToken).toBeString();
+            expect(processing.leaseExpiresAt).toBeInstanceOf(Date);
+            throw error;
+          },
+        });
+        expect(summary).toEqual({ eligible: 1, accepted: 0, skipped: 0, failed: 1 });
+        const failed = await userReminder(id);
+        expect(failed).toMatchObject({
+          status: "FAILED", claimToken: null, leaseExpiresAt: null,
+          attempts: 1, lastError: safeMessage, sentAt: null, onesignalId: null,
+        });
+        expect(log).toHaveBeenCalledWith("Reminder processing failed", { reminderId: failed.id, reason: safeMessage });
+        for (const secret of ["secret-api-key", "Authorization", "private", "postgres://"]) {
+          expect(JSON.stringify(failed)).not.toContain(secret);
+          expect(JSON.stringify(log.mock.calls)).not.toContain(secret);
+        }
+        // The worker must honor the cooldown, not just the claim helper.
+        expect(await sendDueReviewReminders(now, {
+          send: async () => { sends++; return "must-not-send"; },
+        })).toEqual({ eligible: 1, accepted: 0, skipped: 1, failed: 0 });
+        expect(sends).toBe(1);
+        expect(await userReminder(id)).toEqual(failed);
+      } finally {
+        log.mockRestore();
+      }
+    });
+  });
+
+  test("success uses the persisted key and never resends a SENT reminder", async () => {
+    await withDueUser(async (id) => {
+      const existing = await createReminder(id, 2, now);
+      const keys: string[] = [];
+      const send = async (user: string, count: number, key: string) => {
+        expect(user).toBe(id);
+        expect(count).toBe(2);
+        keys.push(key);
+        return "worker-notification-id";
+      };
+      expect(await sendDueReviewReminders(now, { send })).toEqual({ eligible: 1, accepted: 1, skipped: 0, failed: 0 });
+      expect(keys).toEqual([existing.idempotencyKey]);
+      const sent = await userReminder(id);
+      expect(sent).toMatchObject({
+        id: existing.id, idempotencyKey: existing.idempotencyKey,
+        status: "SENT", attempts: 1, onesignalId: "worker-notification-id",
+        claimToken: null, leaseExpiresAt: null, lastError: null,
+      });
+      expect(sent.sentAt).toBeInstanceOf(Date);
+      expect(await sendDueReviewReminders(now, { send })).toEqual({ eligible: 1, accepted: 0, skipped: 1, failed: 0 });
+      expect(keys).toHaveLength(1);
+      expect(await userReminder(id)).toEqual(sent);
+    });
+  });
+
+  test("a retry after cooldown reuses the persisted idempotency key", async () => {
+    await withDueUser(async (id) => {
+      const log = spyOn(console, "error").mockImplementation(() => {});
+      const keys: string[] = [];
+      try {
+        await sendDueReviewReminders(now, {
+          send: async (_user, _count, key) => { keys.push(key); throw new Error("OneSignal HTTP 503"); },
+        });
+        const failed = await userReminder(id);
+        // Age only this fixture; no wall-clock waiting or production writes.
+        await prisma.reviewReminder.update({
+          where: { id: failed.id }, data: { updatedAt: new Date(Date.now() - retryMs - 1000) },
+        });
+        expect(await sendDueReviewReminders(now, {
+          send: async (_user, _count, key) => { keys.push(key); return "retry-notification-id"; },
+        })).toEqual({ eligible: 1, accepted: 1, skipped: 0, failed: 0 });
+        expect(keys).toEqual([failed.idempotencyKey, failed.idempotencyKey]);
+        expect(await userReminder(id)).toMatchObject({
+          status: "SENT", attempts: 2, lastError: null, claimToken: null, leaseExpiresAt: null,
+        });
+      } finally {
+        log.mockRestore();
+      }
+    });
+  });
+
+  test("dry-run before 16:00 reads eligibility, makes zero writes and zero sends", async () => {
+    await withDueUser(async (id) => {
+      await createReminder(id, 2, now);
+      const before = await prisma.reviewReminder.findMany({ orderBy: { id: "asc" } });
+      const callsBefore = httpCalls;
+      const log = spyOn(console, "info").mockImplementation(() => {});
+      const summaryLog = spyOn(console, "log").mockImplementation(() => {});
+      const upsert = spyOn(prisma.reviewReminder, "upsert").mockImplementation(() => { throw new Error("Dry-run attempted a write"); });
+      const update = spyOn(prisma.reviewReminder, "updateMany").mockImplementation(() => { throw new Error("Dry-run attempted a write"); });
+      let sends = 0;
+      let disconnects = 0;
+      try {
+        expect(await runReminderJob({
+          run: (timestamp, options) => sendDueReviewReminders(timestamp, {
+            ...options, send: async () => { sends++; throw new Error("Dry-run attempted a send"); },
+          }),
+          disconnect: async () => { disconnects++; },
+        }, { now, env: { NOTIFICATION_DRY_RUN: "true" } })).toBe(0);
+        expect(log).toHaveBeenCalledWith("[DRY RUN] Would send reminder", { userId: id, dueCount: 2 });
+        expect(summaryLog).toHaveBeenCalledWith("Reminder job summary", { eligible: 1, accepted: 0, skipped: 1, failed: 0 });
+        expect(upsert).not.toHaveBeenCalled();
+        expect(update).not.toHaveBeenCalled();
+        expect(sends).toBe(0);
+        expect(httpCalls).toBe(callsBefore);
+        expect(disconnects).toBe(1);
+        expect(await prisma.reviewReminder.findMany({ orderBy: { id: "asc" } })).toEqual(before);
+      } finally {
+        upsert.mockRestore();
+        update.mockRestore();
+        log.mockRestore();
+        summaryLog.mockRestore();
+      }
+    });
+  });
+
+  test("overlapping workers create one reminder and send exactly once", async () => {
+    await withDueUser(async (id) => {
+      let releaseSend!: () => void;
+      let startedSend!: () => void;
+      const heldSend = new Promise<void>((resolve) => { releaseSend = resolve; });
+      const started = new Promise<void>((resolve) => { startedSend = resolve; });
+      const keys: string[] = [];
+      const send = async (_user: string, _count: number, key: string) => {
+        keys.push(key);
+        startedSend();
+        await heldSend;
+        return "concurrent-notification-id";
+      };
+      // Start both workers before any reminder exists; retain the winning
+      // worker's HTTP request while the other worker tries to claim the row.
+      const workers = [sendDueReviewReminders(now, { send }), sendDueReviewReminders(now, { send })];
+      // A broken claim must fail assertions rather than leave both sends hung.
+      const timeout = setTimeout(releaseSend, 5000);
+      try {
+        await Promise.race([started, Promise.all(workers).then(() => { throw new Error("No worker reached send"); })]);
+        const loser = await Promise.race(workers);
+        expect(loser).toEqual({ eligible: 1, accepted: 0, skipped: 1, failed: 0 });
+        expect(keys).toHaveLength(1);
+        const processing = await userReminder(id);
+        expect(processing).toMatchObject({ status: "PROCESSING", attempts: 1 });
+        expect(keys).toEqual([processing.idempotencyKey]);
+      } finally {
+        clearTimeout(timeout);
+        releaseSend();
+        await Promise.all(workers);
+      }
+      const results = await Promise.all(workers);
+      expect(results.reduce((sum, result) => sum + result.accepted, 0)).toBe(1);
+      expect(keys).toHaveLength(1);
+      expect(await prisma.reviewReminder.count({ where: { userId: id } })).toBe(1);
+      expect(await userReminder(id)).toMatchObject({ status: "SENT", attempts: 1 });
+    });
+  }, 15000);
+
+  test("scheduler CLI dry-run succeeds on a read-only connection with zero HTTP calls", async () => {
+    await withDueUser(async (id) => {
+      // The CLI uses the actual clock, so make only this fixture due relative to it.
+      await prisma.reviewSchedule.updateMany({
+        where: { question: { knowledgeGap: { explanation: { userId: id } } } },
+        data: { nextReviewAt: new Date(Date.now() - 60_000) },
+      });
+      const readOnlyUrl = new URL(databaseUrl);
+      readOnlyUrl.searchParams.set("options", "-c default_transaction_read_only=on");
+      const before = await prisma.reviewReminder.findMany({ orderBy: { id: "asc" } });
+      const child = Bun.spawn([
+        process.execPath, "--preload", "./test-support/block-http.ts", "./run-due-review-reminders.ts",
+      ], {
+        cwd: import.meta.dir,
+        env: {
+          ...process.env,
+          DATABASE_URL: readOnlyUrl.toString(),
+          NOTIFICATION_DRY_RUN: "true",
+          GITHUB_ACTIONS: "true",
+          ONESIGNAL_APP_ID: "test-app",
+          ONESIGNAL_REST_API_KEY: "test-key",
+        },
+        stdout: "pipe", stderr: "pipe",
+      });
+      const timeout = setTimeout(() => child.kill(), 10_000);
+      try {
+        const [stdout, stderr, exitCode] = await Promise.all([
+          new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+        ]);
+        expect(stderr).toBe("");
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain("[DRY RUN] Would send reminder");
+        expect(stdout).toContain(id);
+        expect(stdout).toContain("eligible: 1");
+        expect(stdout).toContain("accepted: 0");
+        expect(stdout).toContain("failed: 0");
+        expect(stdout).toContain("Test HTTP calls 0");
+        expect(await prisma.reviewReminder.findMany({ orderBy: { id: "asc" } })).toEqual(before);
+      } finally {
+        clearTimeout(timeout);
+        child.kill();
+        await child.exited;
+      }
+    });
+  }, 15000);
 });

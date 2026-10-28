@@ -36,6 +36,11 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: bunx prisma generate --config prisma7.config.ts
 
+      - name: Typecheck backend and scripts
+        run: |
+          bun run typecheck
+          bunx tsc -p tsconfig.scripts.json
+
       - name: Run notification worker
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
