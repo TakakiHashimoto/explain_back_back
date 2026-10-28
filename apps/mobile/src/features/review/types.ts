@@ -21,3 +21,15 @@ export type ReviewScheduleDecision = {
   intervalDays: number;
   nextReviewAt: Date;
 };
+
+/** GET /api/v1/reviews/due serializes timestamps as ISO strings. */
+export type DueReview = {
+  questionId: string;
+  intervalDays: number;
+  nextReviewAt: string;
+  question: {
+    id: string;
+    question: string;
+    knowledgeGap: { concept: string };
+  };
+};
