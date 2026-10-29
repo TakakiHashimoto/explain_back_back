@@ -55,17 +55,17 @@ echo "${TOKEN:0:10}..."   # eyJ... で始まれば成功
 GET：
 
 ```bash
-curl -i -H "Authorization: Bearer $TOKEN" $BASE/api/v1/me
+curl --include --header "Authorization: Bearer $TOKEN" $BASE/api/v1/me
 ```
 
 POST（JSON body あり）：
 
 ```bash
-curl -i -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -X POST $BASE/api/v1/<path> -d '{"key":"value"}'
+curl --include --header "Authorization: Bearer $TOKEN" --header "Content-Type: application/json" \
+  --request POST $BASE/api/v1/<path> --data '{"key":"value"}'
 ```
 
-`-i` を付けると、status code とレスポンスヘッダーも表示される。エラーのときは body の `error.code` を見る（→ `docs/error-handling/README.md`）。
+エラーのときは body の `error.code` を見る（→ `docs/error-handling/README.md`）。
 
 ## 5. うまくいかないとき
 

@@ -168,7 +168,7 @@ token の取得と curl の使い方は `docs/auth/curl.md` を参照。ここ�
 プランと使用回数：
 
 ```bash
-curl -i -H "Authorization: Bearer $TOKEN" $BASE/api/v1/me/entitlement
+curl --include --header "Authorization: Bearer $TOKEN" $BASE/api/v1/me/entitlement
 ```
 
 使用回数の予約（dev 用。`NODE_ENV=production` では無効）。`analysis` を `review` に変えると復習として数える。
@@ -180,7 +180,7 @@ curl -i -H "Authorization: Bearer $TOKEN" $BASE/api/v1/me/entitlement
 | `POST /api/v1/dev/analysis/fail` | `FAILED` | 含まれない |
 
 ```bash
-curl -i -H "Authorization: Bearer $TOKEN" -X POST $BASE/api/v1/dev/analysis/complete
+curl --include --header "Authorization: Bearer $TOKEN" --request POST $BASE/api/v1/dev/analysis/complete
 ```
 
 上限に達すると 429 が返る。`error.code` は無料なら `FREE_LIMIT_REACHED`、Pro なら `USAGE_LIMIT_REACHED`（§1.5）。
