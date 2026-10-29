@@ -49,7 +49,14 @@
         }
       ],
       "expo-secure-store",
-      "@clerk/expo"
+      "@clerk/expo",
+      [
+        "expo-status-bar",
+        {
+          "hidden": false,
+          "style": "dark"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
