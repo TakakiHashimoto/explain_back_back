@@ -2,7 +2,7 @@
 
 > 対象：分析（Engineer A）と復習の回答（Engineer B）を受け付けるサーバー処理を書く人
 > ルール（上限・ウィンドウ・数え方）の根拠は [README.md](README.md) §1 を参照。この資料は「C 側の関数をどう呼ぶか」だけをまとめたもの。
-> 最終更新：2026-10-05
+> 最終更新：2026-10-28
 > コードへのリンクはファイル単位。行番号はコードが変わるとずれるので書かず、関数名や定数名で示す。
 
 ## 要点
@@ -10,7 +10,7 @@
 分析・復習の回答を受け付けるサーバー処理では、重い処理の **前に** `reserveUsage()` を呼び、終わったら **必ず** `completeUsage()` を呼ぶ。上限チェック・ウィンドウ管理・同時リクエスト対策は C 側で行うので、A/B は2つの関数を呼ぶだけでよい。
 
 - `reserveUsage(userId, kind)`：上限を確認し、「実行中」の利用レコードを1件作ってその id を返す。上限なら `AppError` を投げる（→ 429）。
-- `completeUsage(id, succeeded)`：その利用レコードを「成功」または「失敗」にする。失敗は回数に数えない。
+- `completeUsage(id, succeeded, tx)`：その利用レコードを「成功」または「失敗」にする。失敗は回数に数えない。3つ目の引数には、保存のトランザクションの中なら `tx`、外なら `prisma` を渡す。
 - 実装：[usage.service.ts](../../apps/backend/src/features/usage/usage.service.ts)
 
 ## 1. reserveUsage
@@ -44,7 +44,7 @@ reserveUsage(userId: string, kind: UsageKind): Promise<string>
 [usage.service.ts](../../apps/backend/src/features/usage/usage.service.ts)
 
 ```ts
-completeUsage(id: string, succeeded: boolean): Promise<void>
+completeUsage(id: string, succeeded: boolean, tx: Prisma.TransactionClient): Promise<void>
 ```
 
 `reserveUsage` が返したレコードを `SUCCEEDED`（`true`）または `FAILED`（`false`）にする。`FAILED` は回数に数えないので、ユーザーはその1回分を失わない。
@@ -53,6 +53,7 @@ completeUsage(id: string, succeeded: boolean): Promise<void>
 |---|---|
 | `id` | `reserveUsage` の戻り値 |
 | `succeeded` | 処理が成功したら `true`、サーバー側の理由で失敗したら `false` |
+| `tx` | 更新に使う Prisma クライアント。結果の保存と同じトランザクションで「成功」にするときは `prisma.$transaction` の `tx` を、単独で更新するときは `prisma` を渡す。省略できない。渡し忘れて、気づかないうちにトランザクションの外で動くのを防ぐため |
 
 細かい動作は次のとおり。
 
@@ -75,10 +76,13 @@ flowchart LR
 
 上限ならレコードは作られず 429 になる。作られたレコードは `completeUsage` で `SUCCEEDED` か `FAILED` になり、呼ばれなければ10分後に数えなくなる。
 
-次は A の分析の実装例である。B は `"REVIEW"` に変え、回答1件ごとに同じ形で呼ぶ。`parseAnalysisInput` と `runAnalysis` は各自の処理に置き換える部分である。
+実装例を2つ示す。`parseAnalysisInput`、`runAnalysis`、`findOwnQuestion`、`evaluateAnswer` などは、各自の処理に置き換える部分である。
+
+### 分析の例（A）
 
 ```ts
 // Path from a router at features/<feature>/routes/*.routes.ts
+import { prisma } from "../../../lib/prisma.js";
 import { completeUsage, reserveUsage } from "../../usage/usage.service.js";
 
 // requireUser must run before this handler (req.user is our internal User)
@@ -96,12 +100,59 @@ router.post("/analyses", async (req, res) => {
     res.json(result);
   } finally {
     // 3. Always complete: FAILED is not counted
-    await completeUsage(usageId, succeeded);
+    await completeUsage(usageId, succeeded, prisma);
   }
 });
 ```
 
-`try / finally` にするのは、途中で例外が出ても `completeUsage(id, false)` が呼ばれ、失敗分がすぐに枠へ戻るためである。例外はそのまま共通 error handler に届く。
+`try / finally` にするのは、途中で例外が出ても `completeUsage(id, false, prisma)` が呼ばれ、失敗分がすぐに枠へ戻るためである。例外はそのまま共通 error handler に届く。
+
+分析の結果を1つのトランザクションで保存する場合（仕様書 §28）は、次の復習の例と同じ形にし、保存と同じトランザクションの中で `completeUsage` を呼ぶ。
+
+### 復習の例（B、トランザクションの中で呼ぶ）
+
+仕様書 §35 の順番に合わせた例である。
+
+```ts
+// Path from a router at features/<feature>/routes/*.routes.ts
+import { prisma } from "../../../lib/prisma.js";
+import { completeUsage, reserveUsage } from "../../usage/usage.service.js";
+
+// requireUser must run before this handler (req.user is our internal User)
+router.post("/:questionId/attempts", async (req, res) => {
+  // 1. Validate input and check ownership first: a 400 / 404 must not consume a use
+  const answer = parseAnswer(req.body);
+  const question = await findOwnQuestion(req.user!.id, req.params.questionId);
+
+  // 2. Reserve: throws AppError (429) when the limit is reached
+  const usageId = await reserveUsage(req.user!.id, "REVIEW");
+
+  try {
+    // 3. Evaluate outside the transaction: the AI call takes seconds
+    const evaluation = await evaluateAnswer(answer, question);
+
+    // 4. Save and complete in one transaction: counted if and only if saved
+    const result = await prisma.$transaction(async (tx) => {
+      const attempt = await tx.reviewAttempt.create({ data: { /* ... */ } });
+      const schedule = await tx.reviewSchedule.upsert({ /* ... */ });
+      await completeUsage(usageId, true, tx);
+      return { attempt, schedule };
+    });
+
+    res.json({ data: result });
+  } catch (error) {
+    // 5. Evaluation failed or the transaction rolled back: the record is still IN_PROGRESS
+    await completeUsage(usageId, false, prisma);
+    throw error;
+  }
+});
+```
+
+- AI の評価はトランザクションの外で行う。AI の返事には数秒〜十数秒かかり、その間トランザクションを持ったままにすると、同じ行に触るほかのリクエストが待たされる（仕様書 §35）。
+- `completeUsage(usageId, true, tx)` を保存と同じトランザクションに入れると、保存が失敗したときは「成功」にした更新も取り消され、レコードは `IN_PROGRESS` に戻る。そのため、「回数に数えた」と「回答を保存した」が必ず一致する。
+- `catch` の中はトランザクションの外なので、`tx` ではなく `prisma` を渡す。
+- トランザクションが確定したあとに例外が出ても（`res.json` の失敗など）、`catch` の `completeUsage(usageId, false, prisma)` は何もしない。`completeUsage` は `IN_PROGRESS` のレコードしか更新しないので（§2）、`SUCCEEDED` が `FAILED` に変わることはない。
+- 今の `saveReviewResult` は中で自分の `$transaction` を開く。この形にするには、`completeUsage` を同じトランザクションの中で呼べるように変える必要がある（`usageId` を受け取る、など）。
 
 実際に動く例として [dev.routes.ts](../../apps/backend/src/features/usage/routes/dev.routes.ts) も参考になる（start / complete / fail の3パターン）。
 
@@ -127,7 +178,8 @@ router.post("/analyses", async (req, res) => {
 ## 5. 注意点
 
 - 入力チェックは `reserveUsage` の前に行う。400 になるリクエストで枠を予約しないため。
-- 呼ぶ側の `prisma.$transaction` の中で呼ばない。`reserveUsage` は中で自分の transaction を開く。その後の呼ぶ側の DB 書き込みが失敗しても予約は消えないので、`completeUsage(id, false)` で戻す。
+- `reserveUsage` は、呼ぶ側の `prisma.$transaction` の中で呼ばない。`reserveUsage` は中で自分の transaction を開く。その後の呼ぶ側の DB 書き込みが失敗しても予約は消えないので、`completeUsage(id, false, prisma)` で戻す。
+- `completeUsage` は反対に、結果を保存するトランザクションがあるなら、その中で `tx` を渡して呼ぶ（§3 の復習の例）。
 - 利用レコードの id をクライアントから受け取らない。`completeUsage` は持ち主（`userId`）を確認しない。サーバー内で保持した id だけを渡す。
 - 非同期処理（ジョブ・キュー）にする場合は、利用レコードの id を自分のテーブル（例：分析の行）に保存し、ジョブの終了時に `completeUsage` を呼ぶ。
 - 10分ルール：`IN_PROGRESS` のまま10分を過ぎたレコードは数えない。`completeUsage` を呼び忘れると、成功したのに10分後に1回分が戻る（少なく数える側にしかずれない）。また、処理が10分以上かかると、その間は上限を超えて受け付けてしまう。
