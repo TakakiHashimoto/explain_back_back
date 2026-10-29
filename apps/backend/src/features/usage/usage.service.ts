@@ -21,9 +21,9 @@ type Usage = {
 
 /**
  * Gets the usage statistics for a user.
- * @param {String} userId - The ID of the user to get usage statistics for.
- * @param {Date} now - The current date and time.
- * @returns {Promise<Usage>} - A promise that resolves to an object containing the user's usage statistics.
+ * @param userId - The ID of the user to get usage statistics for.
+ * @param now - The current date and time.
+ * @returns A promise that resolves to an object containing the user's usage statistics.
  */
 export async function getUsage(userId: string, now: Date): Promise<Usage> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
@@ -89,11 +89,11 @@ export async function getUsage(userId: string, now: Date): Promise<Usage> {
 
 /**
  * Resolves the usage window for a user based on their current plan and the current time.
- * @param {Date | null} windowStart - The start date of the current usage window.
- * @param {Plan | null} windowPlan - The plan associated with the current usage window.
- * @param {Plan} plan - The user's current plan.
- * @param {Date} now - The current date and time.
- * @returns {{ isNew: boolean; start: Date }} - An object containing whether the window is new and its start date.
+ * @param windowStart - The start date of the current usage window.
+ * @param windowPlan - The plan associated with the current usage window.
+ * @param plan - The user's current plan.
+ * @param now - The current date and time.
+ * @returns An object containing whether the window is new and its start date.
  */
 export function resolveWindow(
   windowStart: Date | null,
@@ -112,10 +112,10 @@ export function resolveWindow(
 /**
  * Reserves a usage record for a user, ensuring that the user has not exceeded their usage limits.
  * This function performs an interactive transaction to lock the user's row, count their usage, and create a new usage record atomically.
- * @param {String} userId - The ID of the user for whom to reserve usage.
- * @param {UsageKind} kind - The kind of usage to reserve (e.g., "ANALYSIS" or "REVIEW").
- * @returns {Promise<String>} - A promise that resolves to the ID of the newly created usage record.
- * @throws {AppError} - Throws an AppError if the user has reached their usage limit.
+ * @param userId - The ID of the user for whom to reserve usage.
+ * @param kind - The kind of usage to reserve (e.g., "ANALYSIS" or "REVIEW").
+ * @returns A promise that resolves to the ID of the newly created usage record.
+ * @throws {@link AppError} If the user has reached their usage limit.
  */
 export async function reserveUsage(
   userId: string,
@@ -178,9 +178,9 @@ export async function reserveUsage(
 
 /**
  * Completes a usage record by updating its status to either "SUCCEEDED" or "FAILED".
- * @param {String} id - The ID of the usage record to complete.
- * @param {Boolean} succeeded - A boolean indicating whether the usage succeeded (true) or failed (false).
- * @returns {Promise<void>} - A promise that resolves when the usage record has been updated.
+ * @param id - The ID of the usage record to complete.
+ * @param succeeded - A boolean indicating whether the usage succeeded (true) or failed (false).
+ * @returns A promise that resolves when the usage record has been updated.
  */
 export async function completeUsage(id: string, succeeded: boolean) {
   await prisma.usageRecord.updateMany({
