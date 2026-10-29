@@ -3,7 +3,7 @@
 > 対象：分析（Engineer A）と復習の回答（Engineer B）を受け付けるサーバー処理を書く人
 > ルール（上限・ウィンドウ・数え方）の根拠は [README.md](README.md) §1 を参照。この資料は「C 側の関数をどう呼ぶか」だけをまとめたもの。
 > 最終更新：2026-10-05
-> コードへのリンクは行番号つき。コードが変わると行がずれるので、ずれていたら関数名で探すこと。
+> コードへのリンクはファイル単位。行番号はコードが変わるとずれるので書かず、関数名や定数名で示す。
 
 ## 要点
 
@@ -15,7 +15,7 @@
 
 ## 1. reserveUsage
 
-[usage.service.ts:120](../../apps/backend/src/features/usage/usage.service.ts#L120-L177)
+[usage.service.ts](../../apps/backend/src/features/usage/usage.service.ts)
 
 ```ts
 reserveUsage(userId: string, kind: UsageKind): Promise<string>
@@ -25,23 +25,23 @@ reserveUsage(userId: string, kind: UsageKind): Promise<string>
 
 | 引数 / 戻り値 | 内容 |
 |---|---|
-| `userId` | **内部の `User.id`**。[requireUser](../../apps/backend/src/middleware/require-user.ts#L19) の後なら `req.user!.id`。Clerk の user id（`authSubject`）ではない |
+| `userId` | **内部の `User.id`**。[requireUser](../../apps/backend/src/middleware/require-user.ts) の後なら `req.user!.id`。Clerk の user id（`authSubject`）ではない |
 | `kind` | `"ANALYSIS"`（A：分析1回）または `"REVIEW"`（B：フォローアップ質問への回答1回） |
 | 戻り値 | 作った `UsageRecord.id`（UUID） |
 | 上限到達（無料） | `AppError("FREE_LIMIT_REACHED")` を投げる → 429 |
 | 上限到達（Pro） | `AppError("USAGE_LIMIT_REACHED")` を投げる → 429 |
 
-中でやっていること（呼ぶ側がやる必要はない）：
+`reserveUsage` は中で次の処理をしている。呼ぶ側がやる必要はない。
 
 1. interactive transaction の中で `User` の行を `SELECT ... FOR UPDATE` でロックする（同じユーザーの同時リクエストを順番に処理する）。
 2. 現在のプラン（FREE / PRO）を決め、必要なら新しい7日間ウィンドウを始める（初回利用・7日経過・プラン切り替え）。
 3. ウィンドウ開始以降の `SUCCEEDED` と「10分以内の `IN_PROGRESS`」を数え、上限未満ならレコードを作る。
 
-上限の値は [usage.const.ts:3](../../apps/backend/src/features/usage/usage.const.ts#L3-L6) の `LIMITS`、10分は [usage.const.ts:10](../../apps/backend/src/features/usage/usage.const.ts#L10) の `IN_PROGRESS_TIMEOUT_MS`。
+上限の値は [usage.const.ts](../../apps/backend/src/features/usage/usage.const.ts) の `LIMITS`、10分は同じファイルの `IN_PROGRESS_TIMEOUT_MS`。
 
 ## 2. completeUsage
 
-[usage.service.ts:185](../../apps/backend/src/features/usage/usage.service.ts#L185-L190)
+[usage.service.ts](../../apps/backend/src/features/usage/usage.service.ts)
 
 ```ts
 completeUsage(id: string, succeeded: boolean): Promise<void>
@@ -54,9 +54,9 @@ completeUsage(id: string, succeeded: boolean): Promise<void>
 | `id` | `reserveUsage` の戻り値 |
 | `succeeded` | 処理が成功したら `true`、サーバー側の理由で失敗したら `false` |
 
-動作の細かい点：
+細かい動作は次のとおり。
 
-- `IN_PROGRESS` のレコードだけを更新する。**2回目以降の呼び出しは何もしない**（先に呼んだ結果が残る）。例：`true` のあとに `false` を呼んでも `SUCCEEDED` のまま。
+- `IN_PROGRESS` のレコードだけを更新する。2回目以降の呼び出しは何もしない（先に呼んだ結果が残る）。例：`true` のあとに `false` を呼んでも `SUCCEEDED` のまま。
 - 存在しない id を渡してもエラーにならない（`updateMany` で 0 件更新）。間違った id を渡しても気づけないので注意。
 - 上限エラーは投げない。投げるのは DB 障害時の Prisma エラーだけ。
 - 10分を過ぎた後に呼んでも有効。`IN_PROGRESS` のままなら `SUCCEEDED` になり、もう一度回数に数えられる。
@@ -75,7 +75,7 @@ flowchart LR
 
 上限ならレコードは作られず 429 になる。作られたレコードは `completeUsage` で `SUCCEEDED` か `FAILED` になり、呼ばれなければ10分後に数えなくなる。
 
-実装例（A の分析。B は `"REVIEW"` に変えて回答1件ごとに同じ形）。`parseAnalysisInput` と `runAnalysis` は各自の処理の代わりである。
+次は A の分析の実装例である。B は `"REVIEW"` に変え、回答1件ごとに同じ形で呼ぶ。`parseAnalysisInput` と `runAnalysis` は各自の処理に置き換える部分である。
 
 ```ts
 // Path from a router at features/<feature>/routes/*.routes.ts
@@ -101,13 +101,13 @@ router.post("/analyses", async (req, res) => {
 });
 ```
 
-`try / finally` にする理由：途中で例外が出ても `completeUsage(id, false)` が呼ばれ、失敗分がすぐに枠へ戻る。例外はそのまま共通 error handler に届く。
+`try / finally` にするのは、途中で例外が出ても `completeUsage(id, false)` が呼ばれ、失敗分がすぐに枠へ戻るためである。例外はそのまま共通 error handler に届く。
 
 実際に動く例として [dev.routes.ts](../../apps/backend/src/features/usage/routes/dev.routes.ts) も参考になる（start / complete / fail の3パターン）。
 
 ## 4. エラー処理
 
-`reserveUsage` の上限エラーは **catch せずにそのまま投げる**。[app.ts:36](../../apps/backend/src/app.ts#L36-L51) の共通 error handler が [AppError](../../apps/backend/src/lib/errors.ts#L19-L23) を受け取り、次の JSON を返す（Express 5 なので async handler の reject も自動で届く）。
+`reserveUsage` の上限エラーは **catch せずにそのまま投げる**。[app.ts](../../apps/backend/src/app.ts) の最後にある共通 error handler（引数が4つの `app.use`）が [errors.ts](../../apps/backend/src/lib/errors.ts) の `AppError` を受け取り、次の JSON を返す（Express 5 なので async handler の reject も自動で届く）。
 
 | ケース | HTTP status | `error.code` | アプリの表示 |
 |---|---|---|---|
@@ -119,27 +119,26 @@ router.post("/analyses", async (req, res) => {
 { "error": { "code": "FREE_LIMIT_REACHED", "message": "Reached free limit." } }
 ```
 
-- エラーコードの一覧は [errors.ts:3](../../apps/backend/src/lib/errors.ts#L3-L10) の `ERRORS`。
+- エラーコードの一覧は [errors.ts](../../apps/backend/src/lib/errors.ts) の `ERRORS`。
 - アプリ側は status ではなく `error.code` で表示を分ける（[error-handling/README.md](../error-handling/README.md)）。
 - 429 を自動リトライしない。上限は数日待たないと解除されない（README §1.5）。
 - 上限エラーのときはレコードが作られていないので、`completeUsage` を呼ぶ必要はない。
 
 ## 5. 注意点
 
-- **入力チェックは `reserveUsage` の前に行う。** 400 になるリクエストで枠を予約しないため。
-- **自分の `prisma.$transaction` の中で呼ばない。** `reserveUsage` は自分で transaction を開く。その後の自分の DB 書き込みが失敗しても予約は消えないので、`completeUsage(id, false)` で戻す。
-- **利用レコードの id をクライアントから受け取らない。** `completeUsage` は持ち主（`userId`）を確認しない。サーバー内で保持した id だけを渡す。
-- **非同期処理（ジョブ・キュー）にする場合** は、利用レコードの id を自分のテーブル（例：分析の行）に保存し、ジョブの終了時に `completeUsage` を呼ぶ。
-- **10分ルール：** `IN_PROGRESS` のまま10分を過ぎたレコードは数えない。`completeUsage` を呼び忘れると、成功したのに10分後に1回分が戻る（少なく数える側にしかずれない）。また、処理が10分以上かかると、その間は上限を超えて受け付けてしまう。
-- **「失敗」の定義：** 文字起こしや LLM のエラーなど、サーバー側の理由で結果を返せなかったときに `false` を使う。
+- 入力チェックは `reserveUsage` の前に行う。400 になるリクエストで枠を予約しないため。
+- 呼ぶ側の `prisma.$transaction` の中で呼ばない。`reserveUsage` は中で自分の transaction を開く。その後の呼ぶ側の DB 書き込みが失敗しても予約は消えないので、`completeUsage(id, false)` で戻す。
+- 利用レコードの id をクライアントから受け取らない。`completeUsage` は持ち主（`userId`）を確認しない。サーバー内で保持した id だけを渡す。
+- 非同期処理（ジョブ・キュー）にする場合は、利用レコードの id を自分のテーブル（例：分析の行）に保存し、ジョブの終了時に `completeUsage` を呼ぶ。
+- 10分ルール：`IN_PROGRESS` のまま10分を過ぎたレコードは数えない。`completeUsage` を呼び忘れると、成功したのに10分後に1回分が戻る（少なく数える側にしかずれない）。また、処理が10分以上かかると、その間は上限を超えて受け付けてしまう。
+- 「失敗」の定義：文字起こしや LLM のエラーなど、サーバー側の理由で結果を返せなかったときに `false` を使う。
 
 ## 6. 関連
 
-- [usage.service.ts:28](../../apps/backend/src/features/usage/usage.service.ts#L28-L88) `getUsage(userId, now)`：使用数・上限・ウィンドウ終了時刻を返す。[usage.routes.ts:9](../../apps/backend/src/features/usage/routes/usage.routes.ts#L9) の `GET /api/v1/me/entitlement` が使っている。上限の判定には使わず、`reserveUsage` に任せる。
-- 動作確認用の開発ルート（`NODE_ENV !== "production"` のときだけ）：`POST /api/v1/dev/{analysis,review}/{start,complete,fail}`。使い方は README §6。
+- [usage.service.ts](../../apps/backend/src/features/usage/usage.service.ts) の `getUsage(userId, now)`：使用数・上限・ウィンドウ終了時刻を返す。[usage.routes.ts](../../apps/backend/src/features/usage/routes/usage.routes.ts) の `GET /api/v1/me/entitlement` が使っている。上限の判定には使わず、`reserveUsage` に任せる。
+- 動作確認用の開発ルート（`NODE_ENV === "development"` のときだけ）：`POST /api/v1/dev/{analysis,review}/{start,complete,fail}`。使い方は README §6。
 
 ## 7. 未決定 / すり合わせが必要
 
 - [ ] 分析・評価は10分以内に終わるか？超える場合はタイムアウトを見直す（A / B）
-- [ ] 同じアップロードのリトライを「同じ1回」と扱うか？今はリトライごとに新しく予約される（idempotency key なし）
-- [ ] `completeUsage` で `userId` も確認すべきか？（C）
+- [ ] 同じアップロードのリトライを「同じ1回」と扱うか？今はリトライごとに新しく予約される（idempotency key なし）→ ユーザの損・費用の損・データの重複・間違った429 が発生 (一回目が失敗した場合や上限で断られた場合は問題ないが、1度目の分析中に通信が切れたりアプリ側が時間切れになったりした場合が問題) → 仕様書 §59.11（docs/仕様書.md）合意待ち
