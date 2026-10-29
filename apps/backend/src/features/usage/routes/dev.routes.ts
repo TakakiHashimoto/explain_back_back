@@ -16,14 +16,14 @@ router.post("/review/start", async (req, res) => {
 // start -> complete
 router.post("/review/complete", async (req, res) => {
   const reservedRecordId = await reserveUsage(req.user!.id, "REVIEW");
-  await completeUsage(reservedRecordId, true);
+  await completeUsage(reservedRecordId, true, prisma);
   res.json({ reservedRecordId });
 });
 
 // start -> fail
 router.post("/review/fail", async (req, res) => {
   const reservedRecordId = await reserveUsage(req.user!.id, "REVIEW");
-  await completeUsage(reservedRecordId, false);
+  await completeUsage(reservedRecordId, false, prisma);
   res.json({ reservedRecordId });
 });
 
@@ -36,14 +36,14 @@ router.post("/analysis/start", async (req, res) => {
 // start -> complete
 router.post("/analysis/complete", async (req, res) => {
   const reservedRecordId = await reserveUsage(req.user!.id, "ANALYSIS");
-  await completeUsage(reservedRecordId, true);
+  await completeUsage(reservedRecordId, true, prisma);
   res.json({ reservedRecordId });
 });
 
 // start -> fail
 router.post("/analysis/fail", async (req, res) => {
   const reservedRecordId = await reserveUsage(req.user!.id, "ANALYSIS");
-  await completeUsage(reservedRecordId, false);
+  await completeUsage(reservedRecordId, false, prisma);
   res.json({ reservedRecordId });
 });
 

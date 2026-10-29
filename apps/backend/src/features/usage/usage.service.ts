@@ -3,6 +3,7 @@ import { IN_PROGRESS_TIMEOUT_MS, LIMITS, WINDOW_MS } from "./usage.const.js";
 import { AppError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
 import { getPlan } from "./entitlement/entitlement.service.js";
+import { Prisma } from "../../generated/prisma/client.js";
 
 type Usage = {
   isPro: boolean;
@@ -178,12 +179,18 @@ export async function reserveUsage(
 
 /**
  * Completes a usage record by updating its status to either "SUCCEEDED" or "FAILED".
+ * Only an IN_PROGRESS record is updated, so later calls for the same record and calls with an unknown ID do nothing.
  * @param id - The ID of the usage record to complete.
- * @param succeeded - A boolean indicating whether the usage succeeded (true) or failed (false).
+ * @param succeeded - Whether the usage succeeded (true) or failed (false).
+ * @param tx - The Prisma client to run the update with. Pass the transaction client to commit the update together with the caller's writes, or `prisma` to update the record on its own.
  * @returns A promise that resolves when the usage record has been updated.
  */
-export async function completeUsage(id: string, succeeded: boolean) {
-  await prisma.usageRecord.updateMany({
+export async function completeUsage(
+  id: string,
+  succeeded: boolean,
+  tx: Prisma.TransactionClient,
+) {
+  await tx.usageRecord.updateMany({
     where: { id, status: "IN_PROGRESS" },
     data: { status: succeeded ? "SUCCEEDED" : "FAILED" },
   });
