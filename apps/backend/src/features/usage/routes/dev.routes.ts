@@ -55,4 +55,9 @@ router.delete("/usage", async (req, res) => {
   res.json({ count });
 });
 
+router.get("/usage", async (_req, res) => {
+  const usage = await prisma.usageRecord.findMany();
+  res.json({ usage });
+});
+
 export default router;
