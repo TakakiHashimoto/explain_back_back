@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { completeUsage, reserveUsage } from "../usage.service.js";
 import { requireUser } from "../../../middleware/require-user.js";
+import { prisma } from "../../../lib/prisma.js";
 
 const router = Router();
 
@@ -44,6 +45,14 @@ router.post("/analysis/fail", async (req, res) => {
   const reservedRecordId = await reserveUsage(req.user!.id, "ANALYSIS");
   await completeUsage(reservedRecordId, false);
   res.json({ reservedRecordId });
+});
+
+// delete records
+router.post("/usage/clearMyUsage", async (req, res) => {
+  const { count } = await prisma.usageRecord.deleteMany({
+    where: { userId: req.user!.id },
+  });
+  res.json({ count });
 });
 
 export default router;
