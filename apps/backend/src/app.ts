@@ -29,7 +29,7 @@ app.use("/api/v1/knowledge-gaps", reviewQuestionRouter);
 app.use("/api/v1/reviews", dueReviewRouter);
 
 // test endpoint
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV === "development") {
   app.use("/api/v1/dev", devRoutes);
 }
 
