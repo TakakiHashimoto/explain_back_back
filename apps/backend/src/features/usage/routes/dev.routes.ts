@@ -48,7 +48,7 @@ router.post("/analysis/fail", async (req, res) => {
 });
 
 // delete records
-router.delete("/usage/clearMyUsage", async (req, res) => {
+router.delete("/usage", async (req, res) => {
   const { count } = await prisma.usageRecord.deleteMany({
     where: { userId: req.user!.id },
   });
