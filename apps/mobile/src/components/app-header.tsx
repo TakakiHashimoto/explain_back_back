@@ -14,9 +14,7 @@ export function AppHeader({ title }: AppHeaderProps) {
         <View className="flex-1 min-w-0 row">
           <Image
             accessibilityLabel="Explain It Back App Icon"
-            source={{
-              uri: 'https://lh3.googleusercontent.com/aida/AEtjO1Xrx4o-5LYSgaW1a8hL7lndjAOpG0opvA5jGCeaPYocajwrEBlUY4PM6GT4_9T2OcoOhW4hKkc3bjFC53cnCn1zPNaQ3l6KwbqCBhzh8Ze7aBUPxArY-1bLuvrUut45TJzZ-JMtBpQcDkmvFvNKbbgUMVi0B2BOZ5ugUyn0QwVxh7CsIIh2Tlbv8dENcNsGzGoI9MXOOoZvt8it8YswlXlbhR_qidu3D_HgX97LVhb46d-BoV5DBxdDPg8',
-            }}
+            source={require('@/assets/images/logo.png')}
             className="w-8 h-8"
             resizeMode="contain"
           />
