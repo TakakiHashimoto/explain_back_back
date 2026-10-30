@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { Icon } from './icon';
 import type { ComponentProps } from 'react';
-import type { Tabs } from 'expo-router';
+import { router, type Tabs } from 'expo-router';
 
 import { colors } from '@/styles/tokens';
 
@@ -90,7 +90,7 @@ export function AppTabBar({ state, descriptors, navigation, insets }: TabBarProp
           accessibilityLabel="Speak"
           accessibilityRole="button"
           className="justify-center items-center bg-primary shadow-floating mx-xs -mt-5 rounded-full w-[52px] h-[52px]"
-          onPress={() => {}} // TODO record function
+          onPress={() => router.push('/record')}
         >
           <Icon name="mic" size={26} color={colors.onPrimary} />
         </Pressable>
