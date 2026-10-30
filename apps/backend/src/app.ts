@@ -11,6 +11,7 @@ import { AppError, sendError } from "./lib/errors.js";
 import reviewRouter from "./features/review/routes/review.router.js";
 import reviewQuestionRouter from "./features/review/routes/reviewQuestion.router.js";
 import dueReviewRouter from "./features/review/routes/dueReview.router.js";
+import explanationRouter from "./features/explanation/routes/explanation.routes.js";
 
 export const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/v1/me", usageRoutes);
 app.use("/api/v1/review-questions", reviewRouter);
 app.use("/api/v1/knowledge-gaps", reviewQuestionRouter);
 app.use("/api/v1/reviews", dueReviewRouter);
+app.use("/api/v1/explanations", explanationRouter);
 
 // test endpoint
 if (process.env.NODE_ENV === "development") {
