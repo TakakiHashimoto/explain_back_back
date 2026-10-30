@@ -4,7 +4,6 @@ import { ClerkProvider } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { DefaultTheme, Slot, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
 import { notifications } from '@/features/notifications/onesignal';
 import { colors } from '@/styles/tokens';
 
