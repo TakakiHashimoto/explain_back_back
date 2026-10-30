@@ -12,6 +12,7 @@ const symbols = {
   lock: { ios: 'lock', android: 'lock', web: 'lock' },
   mic: { ios: 'mic', android: 'mic', web: 'mic' },
   arrow: { ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' },
+  chevron: { ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' },
   verified: { ios: 'checkmark.seal', android: 'verified', web: 'verified' },
   tips: { ios: 'lightbulb.max', android: 'tips_and_updates', web: 'tips_and_updates' },
   home: { ios: 'house', android: 'home', web: 'home' },

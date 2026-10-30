@@ -28,7 +28,7 @@ function mixColor(from: string, to: string, t: number): string {
 }
 
 /** One usage column: label, "used / limit" and a progress bar that shifts from primary to warning as it fills. */
-function UsageMeter({ label, used, limit }: UsageMeterProps) {
+export function UsageMeter({ label, used, limit }: UsageMeterProps) {
   const ratio = limit > 0 ? Math.min(used / limit, 1) : 1;
 
   return (
