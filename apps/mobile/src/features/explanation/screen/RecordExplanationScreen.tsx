@@ -60,14 +60,27 @@ function uploadErrorMessage(error: unknown): string {
 /** Records a spoken explanation, uploads it and shows the transcript (design "Record explanation"). */
 export default function RecordExplanationScreen() {
   const { getToken } = useAuth();
-  const recorder = useAudioRecorder(SPEECH_RECORDING_OPTIONS);
-  const recorderState = useAudioRecorderState(recorder, 250);
-
   const [topic, setTopic] = useState('');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [micDenied, setMicDenied] = useState(false);
   // Guards against double taps sending the same recording twice (spec §59.11)
   const uploadingRef = useRef(false);
+  const startedAtRef = useRef(0);
+
+  /** Moves a finished recording (manual stop or the forDuration limit) to the "recorded" phase. */
+  const finishRecording = (uri: string | null) => {
+    const seconds = Math.min((Date.now() - startedAtRef.current) / 1000, MAX_RECORDING_SEC);
+    setPhase((prev) => {
+      if (prev.kind !== 'recording') return prev;
+      return uri ? { kind: 'recorded', uri, seconds } : { kind: 'idle' };
+    });
+    setAudioModeAsync({ allowsRecording: false });
+  };
+
+  const recorder = useAudioRecorder(SPEECH_RECORDING_OPTIONS, (status) => {
+    if (status.isFinished) finishRecording(status.url);
+  });
+  const recorderState = useAudioRecorderState(recorder, 250);
 
   useEffect(() => {
     getRecordingPermissionsAsync().then((p) => {
@@ -79,23 +92,8 @@ export default function RecordExplanationScreen() {
 
   const stopRecording = async () => {
     await recorder.stop();
-    await setAudioModeAsync({ allowsRecording: false });
-    const uri = recorder.uri;
-    if (!uri) {
-      setPhase({ kind: 'idle' });
-      return;
-    }
-    setPhase({ kind: 'recorded', uri, seconds: elapsedSec });
+    finishRecording(recorder.uri);
   };
-
-  // Stop automatically at the limit; the server rejects anything longer anyway.
-  useEffect(() => {
-    if (phase.kind === 'recording' && elapsedSec >= MAX_RECORDING_SEC) {
-      stopRecording();
-    }
-    // stopRecording reads the latest state; only the elapsed time should trigger this
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elapsedSec, phase.kind]);
 
   const startRecording = async () => {
     const permission = await requestRecordingPermissionsAsync();
@@ -106,7 +104,9 @@ export default function RecordExplanationScreen() {
     setMicDenied(false);
     await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
     await recorder.prepareToRecordAsync();
-    recorder.record();
+    // Stops on its own at the limit; the server rejects anything longer anyway.
+    recorder.record({ forDuration: MAX_RECORDING_SEC });
+    startedAtRef.current = Date.now();
     setPhase({ kind: 'recording' });
   };
 
