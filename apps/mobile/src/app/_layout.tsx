@@ -29,7 +29,7 @@ export default function TabLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
+      <ThemeProvider value={LightTheme}>
         <Slot />
       </ThemeProvider>
     </ClerkProvider>
