@@ -1,6 +1,6 @@
 import '@/globals.css';
 
-import { ClerkProvider } from '@clerk/expo';
+import { ClerkProvider, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
@@ -21,6 +21,27 @@ if (!publishableKey) {
   );
 }
 
+/** Declares which route groups are reachable for the current auth state. */
+function RootNavigator() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!isSignedIn}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!!isSignedIn}>
+        {/* NOTE: the order matters. `tabs` needs to come first */}
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(account)" />
+        <Stack.Screen name="(protected)" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+
 /** Renders nested routes with Clerk authentication, token caching, and the light theme. */
 export default function RootLayout() {
   useEffect(() => notifications.initialize(), []);
@@ -28,7 +49,7 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <ThemeProvider value={LightTheme}>
-        <Stack screenOptions={{ headerShown: false }} />
+        <RootNavigator />
       </ThemeProvider>
     </ClerkProvider>
   );

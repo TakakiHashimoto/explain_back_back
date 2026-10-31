@@ -1,14 +1,6 @@
-import { useAuth } from '@clerk/expo';
-import { Redirect } from 'expo-router';
-
 import AppTabs from '@/components/app-tabs';
 
-/** Renders the app tabs after Clerk loads, redirecting signed-out users to sign in. */
+/** Renders the app tabs */
 export default function TabsLayout() {
-  const { isLoaded, isSignedIn } = useAuth();
-
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
-
   return <AppTabs />;
 }
