@@ -2,7 +2,7 @@ import '@/globals.css';
 
 import { ClerkProvider } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
-import { DefaultTheme, Slot, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
 import { notifications } from '@/features/notifications/onesignal';
 import { colors } from '@/styles/tokens';
@@ -21,14 +21,14 @@ if (!publishableKey) {
   );
 }
 
-/** Renders nested routes with Clerk authentication, token caching, and the active color theme. */
-export default function TabLayout() {
+/** Renders nested routes with Clerk authentication, token caching, and the light theme. */
+export default function RootLayout() {
   useEffect(() => notifications.initialize(), []);
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <ThemeProvider value={LightTheme}>
-        <Slot />
+        <Stack screenOptions={{ headerShown: false }} />
       </ThemeProvider>
     </ClerkProvider>
   );

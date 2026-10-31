@@ -9,7 +9,6 @@ import { Entitlement } from '@/features/usage/types';
 import { getEntitlement } from '@/features/usage/api/api.usage';
 import { UsageMeter } from '@/features/usage/components/UsageSummaryCard';
 import { Icon } from '@/components/icon';
-import { TAB_BAR_HEIGHT } from '@/components/app-tab-bar';
 import { colors } from '@/styles/tokens';
 
 type State =
@@ -96,7 +95,7 @@ export default function ProfileScreen() {
         className="app-shell"
         showsVerticalScrollIndicator={false}
         contentContainerClassName="w-full max-w-[600px] self-center gap-[18px] px-margin pt-lg"
-        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 20 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
         {/* Identity */}
         <View className="flex-row items-center gap-[14px]">
