@@ -1,7 +1,7 @@
 import { useAuth, useClerk, useUser } from '@clerk/expo';
 import DateTimePicker from '@expo/ui/community/datetime-picker';
 import Constants from 'expo-constants';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -137,8 +137,11 @@ export default function ProfileScreen() {
             <UsageMeter label="Reviews" used={usage.reviews.used} limit={usage.reviews.limit} />
           </View>
           {!isPro && (
-            // TODO: navigate to the Paywall once its route exists.
-            <Pressable accessibilityRole="button" onPress={() => {}} className="btn-primary">
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/paywall')}
+              className="btn-primary"
+            >
               <Text className="btn-primary-text">Upgrade to Pro</Text>
             </Pressable>
           )}
