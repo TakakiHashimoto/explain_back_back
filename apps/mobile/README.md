@@ -21,9 +21,9 @@ Dependencies are pinned to `react-native-onesignal` **5.5.15** and
 (neither package had a Stable entry when integrated).
 
 The first Expo config plugin generates the iOS Notification Service Extension,
-shared App Group `group.com.anonymous.mobile.onesignal`, and push entitlements.
+shared App Group `group.com.explainitback.app.onesignal`, and push entitlements.
 The extension targets iOS 17.0, matching the app's Clerk plugin requirement. Background remote notifications
-are enabled in `app.json`. Both platform identifiers remain `com.anonymous.mobile`.
+are enabled in `app.json`. Both platform identifiers remain `com.explainitback.app`.
 Android links the SDK automatically; no `google-services.json` is needed for OneSignal.
 
 To verify from the repository root:

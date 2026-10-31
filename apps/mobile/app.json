@@ -7,7 +7,7 @@
     "scheme": "mobile",
     "userInterfaceStyle": "light",
     "ios": {
-      "bundleIdentifier": "com.anonymous.mobile",
+      "bundleIdentifier": "com.explainitback.app",
       "infoPlist": {
         "UIBackgroundModes": ["remote-notification"]
       },
@@ -23,7 +23,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.mobile"
+      "package": "com.explainitback.app"
     },
     "web": {
       "output": "static",
