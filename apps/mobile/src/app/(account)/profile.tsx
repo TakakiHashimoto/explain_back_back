@@ -48,6 +48,20 @@ function SettingsRow({ label, value, onPress, isFirst, testID }: SettingsRowProp
   );
 }
 
+const MINUTES_PER_DAY = 24 * 60;
+
+/** "Resets in N days" from a day out, "Resets in h:mm" under that; null once it has passed. */
+function formatResetIn(minutesLeft: number): string | null {
+  if (minutesLeft <= 0) return null;
+  if (minutesLeft >= MINUTES_PER_DAY) {
+    const days = Math.ceil(minutesLeft / MINUTES_PER_DAY);
+    return `Resets in ${days} ${days === 1 ? 'day' : 'days'}`;
+  }
+  const hours = Math.floor(minutesLeft / 60);
+  const minutes = String(minutesLeft % 60).padStart(2, '0');
+  return `Resets in ${hours}:${minutes}`;
+}
+
 /** Profile & settings (design "Profile & settings — Free (scrolled)"). */
 export default function ProfileScreen() {
   const { user } = useUser();
@@ -59,6 +73,7 @@ export default function ProfileScreen() {
   // Only the hour and minute are used; the date part is ignored.
   const [reminderTime, setReminderTime] = useState(() => new Date(2000, 0, 1, 20, 0));
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+  const [now] = useState(() => Date.now());
 
   const { getToken } = useAuth();
 
@@ -113,8 +128,8 @@ export default function ProfileScreen() {
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
   const email = user?.primaryEmailAddress?.emailAddress;
   const initial = (fullName || email || '?').charAt(0).toUpperCase();
-  const resetDays = usage.windowEnd
-    ? Math.ceil((new Date(usage.windowEnd).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+  const resetLabel = usage.windowEnd
+    ? formatResetIn(Math.ceil((new Date(usage.windowEnd).getTime() - now) / (60 * 1000)))
     : null;
 
   return (
@@ -163,7 +178,7 @@ export default function ProfileScreen() {
             <Text className="text-muted uppercase tracking-[0.9px] label-sm">
               This week’s usage
             </Text>
-            {resetDays && <Text className="text-muted body-sm">Resets in {resetDays} days</Text>}
+            {resetLabel && <Text className="text-muted body-sm">{resetLabel}</Text>}
           </View>
           {/* UsageMeter is flex-1, so wrap each in a row to keep it from collapsing in a column. */}
           <View className="flex-row">
