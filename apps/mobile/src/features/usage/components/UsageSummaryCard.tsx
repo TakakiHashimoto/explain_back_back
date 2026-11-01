@@ -1,10 +1,11 @@
 import { useAuth } from '@clerk/expo';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { colors } from '@/styles/tokens';
 import { getEntitlement } from '../api/api.usage';
 import { Entitlement } from '../types';
+import { useFocusEffect } from 'expo-router';
 
 type State =
   | { status: 'loading' }
@@ -59,47 +60,11 @@ export function UsageMeter({ label, used, limit, testID }: UsageMeterProps) {
   );
 }
 
-/** Shows the current plan and this window's analysis / review usage (Home, design "Free plan · this week"). */
-export function UsageSummaryCard() {
-  const [state, setState] = useState<State>({ status: 'loading' });
-
-  const { getToken } = useAuth();
-
-  useEffect(() => {
-    // Skip state updates when the component unmounts before the request finishes.
-    let cancelled = false;
-    getEntitlement(getToken)
-      .then((entitlement) => {
-        if (!cancelled) setState({ status: 'success', entitlement });
-      })
-      .catch((error) => {
-        if (!cancelled) setState({ status: 'error', error });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [getToken]);
-
-  if (state.status === 'loading') {
-    return (
-      <View className="card row" accessibilityLiveRegion="polite">
-        <ActivityIndicator color={colors.primary} accessibilityLabel="Loading usage" />
-        <Text className="text-muted text-center body-md">Loading your usage…</Text>
-      </View>
-    );
-  }
-  if (state.status === 'error') {
-    return (
-      <View className="card row" accessibilityLiveRegion="polite">
-        <Text className="text-muted text-center body-sm">Failed to load usage</Text>;
-      </View>
-    );
-  }
-
-  const { isPro, usage } = state.entitlement;
-
+/** Plan label and the two usage meters, shown once the entitlement has loaded. */
+function UsageSummaryContent({ entitlement }: { entitlement: Entitlement }) {
+  const { isPro, usage } = entitlement;
   return (
-    <View testID="usage-summary" className="gap-[10px] card-muted">
+    <>
       <View className="flex-row justify-between items-center">
         <Text className="font-sans font-bold text-[11px] text-text-muted uppercase leading-[14px] tracking-[0.9px]">
           {isPro ? 'Pro' : 'Free'} plan · this week
@@ -125,6 +90,54 @@ export function UsageSummaryCard() {
           limit={usage.reviews.limit}
         />
       </View>
+    </>
+  );
+}
+
+/** Shows the current plan and this window's analysis / review usage (Home, design "Free plan · this week"). */
+export function UsageSummaryCard() {
+  const [state, setState] = useState<State>({ status: 'loading' });
+
+  const { getToken } = useAuth();
+
+  // @clerk/expo's useAuth returns a new getToken on every render. Keep the latest one in a ref so
+  // the focus callback below stays stable; with getToken in its deps it re-ran on every render.
+  const getTokenRef = useRef(getToken);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      // Skip state updates when the component unmounts before the request finishes.
+      let cancelled = false;
+      getEntitlement(() => getTokenRef.current())
+        .then((entitlement) => {
+          if (!cancelled) setState({ status: 'success', entitlement });
+        })
+        .catch((error) => {
+          if (!cancelled) setState({ status: 'error', error });
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  return (
+    <View testID="usage-summary" className="gap-[10px] card-muted">
+      {state.status === 'loading' ? (
+        <View className="row" accessibilityLiveRegion="polite">
+          <ActivityIndicator color={colors.primary} accessibilityLabel="Loading usage" />
+          <Text className="text-muted body-md">Loading your usage…</Text>
+        </View>
+      ) : state.status === 'error' ? (
+        <View className="row" accessibilityLiveRegion="polite">
+          <Text className="text-muted body-md">Failed to load usage</Text>
+        </View>
+      ) : (
+        <UsageSummaryContent entitlement={state.entitlement} />
+      )}
     </View>
   );
 }
