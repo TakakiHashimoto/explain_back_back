@@ -3,6 +3,7 @@ import { evaluateAnswer } from "../evaluation/answerEvaluator.js";
 import { prisma } from "../../../lib/prisma.js";
 import { scheduleReview } from "../scheduling/schedulReview.js";
 import { saveReviewResult } from "../services/saveReviewResult.js";
+import { completeUsage, reserveUsage } from "../../usage/usage.service.js";
 
 // This is the controller for having AI review the user's answer and calculate the schedule for next review
 export async function reviewAnswers(
@@ -30,6 +31,8 @@ export async function reviewAnswers(
     return;
   }
 
+  let usageRecordId: string | undefined;
+
   try {
     const reviewQ = await prisma.reviewQuestion.findFirst({
       where: {
@@ -42,6 +45,8 @@ export async function reviewAnswers(
       res.status(404).json({ error: "review question was not found" });
       return;
     }
+
+    usageRecordId = await reserveUsage(req.user.id, "REVIEW");
 
     // evaluate the body and get result
     const reviewRes = await evaluateAnswer(
@@ -56,10 +61,15 @@ export async function reviewAnswers(
       answer.trim(),
       reviewRes,
       schedule,
+      usageRecordId,
     );
 
     return res.status(200).json({ data: result });
   } catch (error) {
+    if (usageRecordId) {
+      // A stuck IN_PROGRESS record stops counting after IN_PROGRESS_TIMEOUT_MS.
+      await completeUsage(usageRecordId, false, prisma).catch(() => {});
+    }
     next(error);
   }
 }

@@ -3,9 +3,11 @@ import { once } from "node:events";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Request, Response, NextFunction } from "express";
+import { AppError, type ErrorCode } from "../../src/lib/errors.js";
 
 // Real Express HTTP + real requireUser/controller/evaluator/scheduling/service.
-// Clerk identity, OpenAI transport and Prisma persistence are mocked. No database is opened.
+// Clerk identity, OpenAI transport, Prisma persistence and the usage service are mocked.
+// No database is opened.
 const now = new Date("2026-10-31T12:00:00.000Z");
 const q = {
   id: "question-1",
@@ -115,6 +117,15 @@ mock.module("@clerk/express", () => ({
     userId: "clerk-owner",
   }),
 }));
+const reserveUsage = mock(async () => "usage-1");
+const completeUsage = mock(async () => {});
+mock.module("../../src/features/usage/usage.service.js", () => ({
+  getUsage: mock(async () => {
+    throw new Error("not used in review tests");
+  }),
+  reserveUsage,
+  completeUsage,
+}));
 const { app } = await import("../../src/app.js");
 let server: Server;
 let origin: string;
@@ -146,6 +157,9 @@ beforeEach(() => {
   createAttempt.mockClear();
   upsertSchedule.mockClear();
   findDue.mockClear();
+  reserveUsage.mockClear();
+  reserveUsage.mockResolvedValue("usage-1");
+  completeUsage.mockClear();
 });
 async function request(
   path: string,
@@ -179,6 +193,7 @@ test.each(["", "invalid-token"])(
     expect(userUpsert).not.toHaveBeenCalled();
     expect(findQuestion).not.toHaveBeenCalled();
     expect(parse).not.toHaveBeenCalled();
+    expect(reserveUsage).not.toHaveBeenCalled();
   },
 );
 
@@ -221,6 +236,7 @@ test.each(["missing-question", "other-users-question"])(
     ).toBe(true);
     expect(parse).not.toHaveBeenCalled();
     expect(transaction).not.toHaveBeenCalled();
+    expect(reserveUsage).not.toHaveBeenCalled();
   },
 );
 
@@ -232,6 +248,7 @@ test.each(["", " \n", 42, null])(
     ).toBe(400);
     expect(parse).not.toHaveBeenCalled();
     expect(transaction).not.toHaveBeenCalled();
+    expect(reserveUsage).not.toHaveBeenCalled();
   },
 );
 
@@ -276,6 +293,12 @@ test("POST uses real evaluator/scheduler/service and serializes the two persiste
   expect(upsertSchedule).toHaveBeenCalledTimes(1);
   expect(typeof response.body.data.reviewSchedule.nextReviewAt).toBe("string");
   expect((await request("reviews/due")).body.data).toEqual([]);
+  expect(reserveUsage).toHaveBeenCalledWith("owner", "REVIEW");
+  expect(completeUsage).toHaveBeenCalledWith(
+    "usage-1",
+    true,
+    expect.anything(),
+  );
 });
 
 test("invalid AI output is rejected before persistence", async () => {
@@ -292,6 +315,11 @@ test("invalid AI output is rejected before persistence", async () => {
     expect(response.status).toBe(500);
     expect(transaction).not.toHaveBeenCalled();
     expect(savedAttempts).toEqual([]);
+    expect(completeUsage).toHaveBeenCalledWith(
+      "usage-1",
+      false,
+      expect.anything(),
+    );
   } finally {
     console.error = originalError;
   }
@@ -311,7 +339,35 @@ test("transaction failure returns 500 instead of reporting saved feedback (simul
     expect(response.body).toEqual({
       error: { code: "INTERNAL_ERROR", message: "Something went wrong." },
     });
+    expect(completeUsage).toHaveBeenLastCalledWith(
+      "usage-1",
+      false,
+      expect.anything(),
+    );
   } finally {
     console.error = originalError;
   }
 });
+
+test.each<ErrorCode>(["FREE_LIMIT_REACHED", "USAGE_LIMIT_REACHED"])(
+  "%s returns 429 before AI/persistence and leaves no usage to complete",
+  async (code) => {
+    reserveUsage.mockRejectedValueOnce(new AppError(code));
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      const response = await request(`review-questions/${q.id}/attempts`, {
+        answer: "answer",
+      });
+      expect(response.status).toBe(429);
+      expect(response.body.error.code).toBe(code);
+      expect(reserveUsage).toHaveBeenCalledWith("owner", "REVIEW");
+      expect(parse).not.toHaveBeenCalled();
+      expect(transaction).not.toHaveBeenCalled();
+      expect(completeUsage).not.toHaveBeenCalled();
+      expect(savedAttempts).toEqual([]);
+    } finally {
+      console.error = originalError;
+    }
+  },
+);

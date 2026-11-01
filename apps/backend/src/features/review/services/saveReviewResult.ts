@@ -1,4 +1,5 @@
 import { prisma } from "../../../lib/prisma.js";
+import { completeUsage } from "../../usage/usage.service.js";
 import type { ReviewEvaluation, ReviewScheduleDecision } from "../types.js";
 
 export async function saveReviewResult(
@@ -6,6 +7,7 @@ export async function saveReviewResult(
   answer: string,
   evaluation: ReviewEvaluation,
   schedule: ReviewScheduleDecision,
+  usageRecordId: string,
 ) {
   // this function saves attemps and scheduel and both needs to be transaction
   return prisma.$transaction(async (tx) => {
@@ -27,7 +29,10 @@ export async function saveReviewResult(
       },
     });
 
-    // 3. Return both database records
+    // 3. Mark the usage record as SUCCEEDED in the same transaction
+    await completeUsage(usageRecordId, true, tx);
+
+    // 4. Return both database records
     return { attempt, reviewSchedule };
   });
 }
