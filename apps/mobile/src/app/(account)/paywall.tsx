@@ -1,12 +1,14 @@
 import { useAuth } from '@clerk/expo';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/icon';
 import { getEntitlement } from '@/features/usage/api/api.usage';
 import { Entitlement } from '@/features/usage/types';
 import { colors } from '@/styles/tokens';
+import { purchases } from '@/features/purchases/revenuecat';
+import { PurchasesPackage } from 'react-native-purchases';
 
 type PlanId = 'yearly' | 'monthly';
 
@@ -99,27 +101,59 @@ export default function PaywallScreen() {
   const { getToken } = useAuth();
   const [plan, setPlan] = useState<PlanId>('yearly');
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const [plans, setPlans] = useState<{
+    monthly: PurchasesPackage;
+    annual: PurchasesPackage;
+  } | null>();
 
-  useEffect(() => {
-    let cancelled = false;
-    // The usage notes are optional, so a failed fetch just leaves them hidden.
-    getEntitlement(getToken)
-      .then((result) => {
-        if (!cancelled) setEntitlement(result);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [getToken]);
+  useFocusEffect(
+    useCallback(() => {
+      setNow(Date.now());
+
+      let cancelled = false;
+      // The usage notes are optional, so a failed fetch just leaves them hidden.
+      getEntitlement(getToken)
+        .then((result) => {
+          if (!cancelled) setEntitlement(result);
+        })
+        .catch(() => {});
+
+      purchases
+        .getPlans()
+        .then((result) => {
+          if (!cancelled) setPlans(result);
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }, [getToken]),
+  );
 
   // Profile can open the Paywall before the limit, so the limit notes show only when it is reached.
   const usage = entitlement?.usage;
   const isLimitReached = !!usage && usage.analyses.used >= usage.analyses.limit;
   const resetDays = usage?.windowEnd
-    ? Math.ceil((new Date(usage.windowEnd).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    ? Math.ceil((new Date(usage.windowEnd).getTime() - now) / (24 * 60 * 60 * 1000))
     : null;
   const reviewsLeft = usage ? Math.max(usage.reviews.limit - usage.reviews.used, 0) : 0;
+
+  async function onContinue() {
+    const pkg = plan === 'yearly' ? plans?.annual : plans?.monthly;
+    if (!pkg || isPurchasing) return;
+    setIsPurchasing(true);
+    try {
+      if ((await purchases.purchase(pkg)) === 'purchased') {
+        Alert.alert("You're Pro now", undefined, [{ text: 'OK', onPress: () => router.back() }]);
+      }
+    } catch {
+      Alert.alert('Purchase failed', 'Please try again.');
+    } finally {
+      setIsPurchasing(false);
+    }
+  }
 
   return (
     <View testID="screen-paywall" className="app-shell" style={{ paddingTop: insets.top }}>
@@ -209,11 +243,10 @@ export default function PaywallScreen() {
         </View>
 
         <View className="gap-[10px]">
-          {/* TODO: purchase the selected plan via RevenueCat (Phase 4). */}
           <Pressable
             testID="paywall-purchase"
             accessibilityRole="button"
-            onPress={() => {}}
+            onPress={onContinue}
             className="btn-primary"
           >
             <Text className="btn-primary-text">Continue</Text>

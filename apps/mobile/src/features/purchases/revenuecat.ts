@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import Purchases from 'react-native-purchases';
-import type { PurchasesPackage } from 'react-native-purchases';
+import type { PurchasesError, PurchasesPackage } from 'react-native-purchases';
 
 const PRO_ENTITLEMENT = 'pro';
 let currentUserId: string | undefined;
@@ -60,8 +60,20 @@ export const purchases = {
   },
 
   /**
-   * Buys a package; cancellation is a normal result,
-   * not an error.
+   * Buys a package; cancellation is a normal result, not an error.
    */
-  purchase(pkg: PurchasesPackage) {},
+  async purchase(pkg: PurchasesPackage): Promise<'purchased' | 'cancelled'> {
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      if (!customerInfo.entitlements.active[PRO_ENTITLEMENT]) {
+        throw new Error(`Purchase completed but "${PRO_ENTITLEMENT}" is not active`);
+      }
+      return 'purchased';
+    } catch (e) {
+      if ((e as PurchasesError).code === Purchases.PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        return 'cancelled';
+      }
+      throw e;
+    }
+  },
 };
