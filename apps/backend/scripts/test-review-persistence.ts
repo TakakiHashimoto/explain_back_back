@@ -51,6 +51,20 @@ async function main() {
     return { attempts, schedules };
   }
 
+  // saveReviewResult completes the caller's reserved record, so each call needs one.
+  async function reserveRecord() {
+    return (
+      await prisma.usageRecord.create({
+        data: { userId: ids.user, kind: "REVIEW" },
+      })
+    ).id;
+  }
+
+  async function usageStatus(id: string) {
+    return (await prisma.usageRecord.findUniqueOrThrow({ where: { id } }))
+      .status;
+  }
+
   try {
     await prisma.$queryRaw`SELECT 1`;
     connected = true;
@@ -90,12 +104,15 @@ async function main() {
     assert.deepEqual(await readState(), { attempts: [], schedules: [] });
 
     const firstAnswer = "Promise callbacks interrupt synchronous JavaScript.";
+    const firstUsage = await reserveRecord();
     const first = await saveReviewResult(
       ids.question,
       firstAnswer,
       low,
       scheduleReview(low.score, now),
+      firstUsage,
     );
+    assert.equal(await usageStatus(firstUsage), "SUCCEEDED");
     const afterFirst = await readState();
     assert.deepEqual(afterFirst.attempts, [first.attempt]);
     assert.deepEqual(afterFirst.schedules, [first.reviewSchedule]);
@@ -118,6 +135,7 @@ async function main() {
       secondAnswer,
       high,
       scheduleReview(high.score, now),
+      await reserveRecord(),
     );
     const beforeFailure = await readState();
     assert.equal(beforeFailure.attempts.length, 2);
@@ -148,12 +166,16 @@ async function main() {
     // The service awaits the attempt INSERT before Prisma rejects the invalid
     // date in the schedule upsert. This tests rollback on a validation error,
     // not a PostgreSQL constraint violation.
+    const failedUsage = await reserveRecord();
     await assert.rejects(
       () =>
-        saveReviewResult(ids.question, "This attempt must roll back.", low, {
-          intervalDays: 1,
-          nextReviewAt: new Date(Number.NaN),
-        }),
+        saveReviewResult(
+          ids.question,
+          "This attempt must roll back.",
+          low,
+          { intervalDays: 1, nextReviewAt: new Date(Number.NaN) },
+          failedUsage,
+        ),
       (error: unknown) =>
         error instanceof Error &&
         error.name === "PrismaClientValidationError" &&
@@ -167,6 +189,7 @@ async function main() {
     assert.deepEqual(afterFailure, beforeFailure);
     assert.equal(afterFailure.attempts.length, 2);
     assert.equal(afterFailure.schedules.length, 1);
+    assert.equal(await usageStatus(failedUsage), "IN_PROGRESS");
     console.log("PASS: rollback leaves exactly two attempts and one unchanged schedule");
   } finally {
     try {
@@ -178,6 +201,7 @@ async function main() {
           prisma.reviewQuestion.deleteMany({ where: { id: ids.question } }),
           prisma.knowledgeGap.deleteMany({ where: { id: ids.gap } }),
           prisma.explanation.deleteMany({ where: { id: ids.explanation } }),
+          prisma.usageRecord.deleteMany({ where: { userId: ids.user } }),
           prisma.user.deleteMany({ where: { id: ids.user } }),
         ]);
         const counts = await Promise.all([
@@ -186,9 +210,10 @@ async function main() {
           prisma.reviewQuestion.count({ where: { id: ids.question } }),
           prisma.knowledgeGap.count({ where: { id: ids.gap } }),
           prisma.explanation.count({ where: { id: ids.explanation } }),
+          prisma.usageRecord.count({ where: { userId: ids.user } }),
           prisma.user.count({ where: { id: ids.user } }),
         ]);
-        assert.deepEqual(counts, [0, 0, 0, 0, 0, 0]);
+        assert.deepEqual(counts, [0, 0, 0, 0, 0, 0, 0]);
         console.log("PASS: all of this run's test fixtures removed");
       }
     } finally {
