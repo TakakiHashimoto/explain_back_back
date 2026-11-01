@@ -1,68 +1,50 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { Alert, Platform } from 'react-native';
-import type { PushSubscriptionChangedState } from 'react-native-onesignal';
+import { Platform } from 'react-native';
 
 // TODO: Hide this app id
 const APP_ID = '4ef89c9c-db70-4019-9b48-5cbd71f70e87';
 
 let sdk: typeof import('react-native-onesignal') | undefined;
-let dialogShown = false;
-
-function reportError(error: unknown) {
-  console.warn('OneSignal push registration:', error);
-}
 
 /** Owns all native OneSignal calls; web and Expo Go do not load the native SDK. */
 export const notifications = {
-  initialize(): () => void {
+  /** Loads the SDK once. It does not ask for permission; see `enable`. */
+  initialize() {
     if (
+      sdk ||
       (Platform.OS !== 'ios' && Platform.OS !== 'android') ||
       Constants.executionEnvironment === ExecutionEnvironment.StoreClient
     ) {
-      return () => {};
+      return;
     }
 
-    if (!sdk) {
-      const nativeSdk: typeof import('react-native-onesignal') = require('react-native-onesignal');
-      nativeSdk.OneSignal.Debug.setLogLevel(
-        __DEV__ ? nativeSdk.LogLevel.Verbose : nativeSdk.LogLevel.None,
-      );
-      nativeSdk.OneSignal.initialize(APP_ID);
-      sdk = nativeSdk;
-    }
+    const nativeSdk: typeof import('react-native-onesignal') = require('react-native-onesignal');
+    nativeSdk.OneSignal.Debug.setLogLevel(
+      __DEV__ ? nativeSdk.LogLevel.Verbose : nativeSdk.LogLevel.None,
+    );
+    nativeSdk.OneSignal.initialize(APP_ID);
+    sdk = nativeSdk;
+  },
 
-    const { OneSignal } = sdk;
-    let active = true;
-    const showVerification = (id: string | null | undefined) => {
-      if (!active || dialogShown || !id?.trim() || id.startsWith('local-')) return;
+  /** True when this device receives pushes: OS permission granted and not opted out. */
+  async isOptedIn(): Promise<boolean> {
+    return (await sdk?.OneSignal.User.pushSubscription.getOptedInAsync()) ?? false;
+  },
 
-      dialogShown = true;
-      Alert.alert(
-        'Your OneSignal SDK integration is complete!',
-        'You can now send Push Notifications & In-App Messages through OneSignal. Tap below to enable push notifications.',
-        [
-          {
-            text: 'Got it',
-            onPress: () => {
-              void OneSignal.Notifications.requestPermission(true).catch(reportError);
-            },
-          },
-        ],
-        { cancelable: false },
-      );
-    };
-    const onSubscriptionChange = (event: PushSubscriptionChangedState) => {
-      showVerification(event.current.id);
-    };
+  /**
+   * Turns pushes on for this device, asking for the OS permission first. When it was denied
+   * before, OneSignal offers to open the app settings instead. Resolves to whether it is on.
+   */
+  async enable(): Promise<boolean> {
+    if (!sdk) return false;
+    const granted = await sdk.OneSignal.Notifications.requestPermission(true);
+    if (granted) sdk.OneSignal.User.pushSubscription.optIn();
+    return granted;
+  },
 
-    OneSignal.User.pushSubscription.addEventListener('change', onSubscriptionChange);
-    void OneSignal.User.pushSubscription.getIdAsync().then(showVerification).catch(reportError);
-
-    // React retains this cleanup and its listener until the root layout unmounts.
-    return () => {
-      active = false;
-      OneSignal.User.pushSubscription.removeEventListener('change', onSubscriptionChange);
-    };
+  /** Stops pushes on this device. The OS permission stays, so `enable` can resume them. */
+  disable() {
+    sdk?.OneSignal.User.pushSubscription.optOut();
   },
 
   login(externalId: string) {

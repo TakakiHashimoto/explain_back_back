@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Entitlement } from '@/features/usage/types';
 import { getEntitlement } from '@/features/usage/api/api.usage';
 import { UsageMeter } from '@/features/usage/components/UsageSummaryCard';
+import { notifications } from '@/features/notifications/onesignal';
 import { Icon } from '@/components/icon';
 import { colors } from '@/styles/tokens';
 
@@ -53,13 +54,39 @@ export default function ProfileScreen() {
   const { signOut } = useClerk();
   const insets = useSafeAreaInsets();
   const [state, setState] = useState<State>({ status: 'loading' });
-  // TODO: persist and schedule reminders; local state only for now.
-  const [remindersOn, setRemindersOn] = useState(true);
+  // Mirrors this device's push opt-in; turning it on is where we ask for notification permission.
+  const [remindersOn, setRemindersOn] = useState(false);
   // Only the hour and minute are used; the date part is ignored.
   const [reminderTime, setReminderTime] = useState(() => new Date(2000, 0, 1, 20, 0));
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
 
   const { getToken } = useAuth();
+
+  useEffect(() => {
+    let cancelled = false;
+    notifications
+      .isOptedIn()
+      .then((optedIn) => {
+        if (!cancelled) setRemindersOn(optedIn);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ON asks for permission (or offers the settings when it was denied); the switch shows the result.
+  const onRemindersChange = (on: boolean) => {
+    if (!on) {
+      notifications.disable();
+      setRemindersOn(false);
+      return;
+    }
+    notifications
+      .enable()
+      .then(setRemindersOn)
+      .catch(() => setRemindersOn(false));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -177,7 +204,7 @@ export default function ProfileScreen() {
                 testID="profile-reminders"
                 accessibilityLabel="Review reminders"
                 value={remindersOn}
-                onValueChange={setRemindersOn}
+                onValueChange={onRemindersChange}
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor={colors.surface}
               />
