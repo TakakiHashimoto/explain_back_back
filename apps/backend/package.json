@@ -7,6 +7,8 @@
     "test": "bun test scripts/*.test.ts",
     "test:reminders": "bun test scripts/review-reminders.test.ts",
     "dev": "tsx watch src/server.ts",
+    "dev:e2e": "FAKE_AI_EVALUATION=true tsx watch src/server.ts",
+    "e2e:fixtures": "bun scripts/e2e-fixtures.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
     "start": "node dist/server.js"
