@@ -63,11 +63,6 @@ export function AppTabBar({ state, descriptors, navigation, insets }: TabBarProp
         {icon && (
           <Icon name={icon} size={22} color={isFocused ? colors.primary : colors.textMuted} />
         )}
-        {icon === 'review' && (
-          <View className="-top-1 -right-2 absolute justify-center items-center bg-danger rounded-full w-4 h-4">
-            <Text className="text-[10px] text-on-primary leading-[12px] label-sm">3</Text>
-          </View>
-        )}
         <Text className={`label-sm ${isFocused ? 'text-primary' : 'text-muted'}`}>{label}</Text>
       </Pressable>
     );
