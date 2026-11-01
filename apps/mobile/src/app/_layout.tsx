@@ -6,6 +6,8 @@ import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
 import { notifications } from '@/features/notifications/onesignal';
 import { colors } from '@/styles/tokens';
+import { apiFetch } from '@/lib/api-fetch';
+import { purchases } from '@/features/purchases/revenuecat';
 
 // Navigator containers and screens without `app-shell` use the theme background; match the design token.
 const LightTheme = {
@@ -23,7 +25,15 @@ if (!publishableKey) {
 
 /** Declares which route groups are reachable for the current auth state. */
 function RootNavigator() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    apiFetch<{ id: string }>('/api/v1/me', getToken)
+      .then(({ id }) => purchases.identify(id))
+      .catch((e) => console.warn('purchases identify failed', e));
+  }, [isSignedIn, getToken]);
+
   if (!isLoaded) return null;
 
   return (
