@@ -1,0 +1,14 @@
+# Signing out does not need the backend (it only talks to Clerk).
+# No launchApp: continues on Profile from 4-profile-retry.
+appId: com.explainitback.app
+name: Sign out without the backend
+---
+- scrollUntilVisible:
+    element:
+      id: profile-sign-out
+- tapOn:
+    id: profile-sign-out
+- extendedWaitUntil:
+    visible:
+      id: screen-sign-in
+    timeout: 15000
