@@ -76,5 +76,15 @@ curl --include --header "Authorization: Bearer $TOKEN" --header "Content-Type: a
 | 401 `UNAUTHENTICATED` | token の有効期限（約60秒）切れ、または `Bearer null` を送っている | 3 を再実行する |
 | 404 `NOT_FOUND` | パスの間違い。dev 用の route は `NODE_ENV=production` では無効 | パスと backend の起動環境を確認する |
 | `curl: (7) Failed to connect` | backend が起動していない | 1 を実行する |
+| Windows の Git Bash で `clerk api /sessions` が `not found` | Git Bash が `/sessions` を Windows のファイルパス（`C:/Program Files/Git/sessions`）に書き換えている | 下の「Windows（Git Bash）の場合」を参照 |
 
 `jq -r` は、値がないと文字列の `null` を返す。エラーにならずに次のコマンドへ進んでしまうので、`echo` で値を確認してから使う。
+
+### Windows（Git Bash）の場合
+
+Git Bash は `/` で始まる引数を Windows のパスに書き換えるので、`clerk api` に渡す `/sessions` が壊れる。コマンドの先頭に `MSYS_NO_PATHCONV=1` を付けて、書き換えを止める。
+
+```bash
+SID=$(MSYS_NO_PATHCONV=1 bunx clerk@latest api /sessions -d '{"user_id":"user_xxx"}' | jq -r .id)
+TOKEN=$(MSYS_NO_PATHCONV=1 bunx clerk@latest api /sessions/$SID/tokens -d '{}' | jq -r .jwt)
+```
