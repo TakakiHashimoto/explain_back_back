@@ -1,3 +1,5 @@
+import { File } from 'expo-file-system';
+
 import { ApiError, GetToken } from '@/lib/api-fetch';
 import { Explanation } from '../types';
 
@@ -11,11 +13,13 @@ export async function uploadExplanation(
 ): Promise<Explanation> {
   const form = new FormData();
   form.append('topic', input.topic);
-  // React Native reads the file from the uri; the cast is needed because the DOM typing expects a Blob.
+  // expo/fetch (the global fetch since SDK 57) rejects React Native's { uri } parts with
+  // "Unsupported FormDataPart implementation"; it reads parts that have bytes() instead.
+  const recording = new File(input.recordingUri);
   form.append('audio', {
-    uri: input.recordingUri,
     name: 'explanation.m4a',
     type: 'audio/m4a',
+    bytes: async () => new Uint8Array(await recording.arrayBuffer()),
   } as unknown as Blob);
 
   const token = await getToken();
