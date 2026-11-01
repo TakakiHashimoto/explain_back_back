@@ -2,7 +2,7 @@ import { useAuth, useClerk, useUser } from '@clerk/expo';
 import DateTimePicker from '@expo/ui/community/datetime-picker';
 import Constants from 'expo-constants';
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -98,12 +98,19 @@ export default function ProfileScreen() {
     };
   }, []);
 
+  // @clerk/expo's useAuth returns a new getToken on every render. Keep the latest one in a ref so
+  // the focus callback below stays stable; with getToken in its deps it re-ran on every render.
+  const getTokenRef = useRef(getToken);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  });
+
   useFocusEffect(
     useCallback(() => {
       setNow(Date.now());
 
       let cancelled = false;
-      getEntitlement(getToken)
+      getEntitlement(() => getTokenRef.current())
         .then((entitlement) => {
           if (!cancelled) setState({ status: 'success', entitlement });
         })
@@ -113,7 +120,7 @@ export default function ProfileScreen() {
       return () => {
         cancelled = true;
       };
-    }, [getToken]),
+    }, []),
   );
 
   // ON asks for permission (or offers the settings when it was denied); the switch shows the result.
