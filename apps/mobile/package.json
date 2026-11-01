@@ -44,6 +44,8 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "test:reviews": "bun test src/features/review",
+    "test": "bun run test:reviews && bun test src/features/notifications/onesignal.test.ts",
     "typecheck": "tsc --noEmit",
     "design:preview": "node scripts/build-design-preview.mjs",
     "start": "expo start",

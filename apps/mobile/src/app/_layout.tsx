@@ -6,7 +6,9 @@ import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
 import { notifications } from '@/features/notifications/onesignal';
 import { colors } from '@/styles/tokens';
+import { useColorScheme } from 'react-native';
 
+import { NotificationIdentityBridge } from '@/features/notifications/NotificationIdentityBridge';
 // Navigator containers and screens without `app-shell` use the theme background; match the design token.
 const LightTheme = {
   ...DefaultTheme,
@@ -48,6 +50,7 @@ export default function RootLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <NotificationIdentityBridge />
       <ThemeProvider value={LightTheme}>
         <RootNavigator />
       </ThemeProvider>
