@@ -1,8 +1,8 @@
 import { useAuth, useClerk, useUser } from '@clerk/expo';
 import DateTimePicker from '@expo/ui/community/datetime-picker';
 import Constants from 'expo-constants';
-import { router, Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, Stack, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -81,7 +81,7 @@ export default function ProfileScreen() {
   // Only the hour and minute are used; the date part is ignored.
   const [reminderTime, setReminderTime] = useState(() => new Date(2000, 0, 1, 20, 0));
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
-  const [now] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   const { getToken } = useAuth();
 
@@ -98,6 +98,24 @@ export default function ProfileScreen() {
     };
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      setNow(Date.now());
+
+      let cancelled = false;
+      getEntitlement(getToken)
+        .then((entitlement) => {
+          if (!cancelled) setState({ status: 'success', entitlement });
+        })
+        .catch((error) => {
+          if (!cancelled) setState({ status: 'error', error });
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [getToken]),
+  );
+
   // ON asks for permission (or offers the settings when it was denied); the switch shows the result.
   const onRemindersChange = (on: boolean) => {
     if (!on) {
@@ -110,20 +128,6 @@ export default function ProfileScreen() {
       .then(setRemindersOn)
       .catch(() => setRemindersOn(false));
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    getEntitlement(getToken)
-      .then((entitlement) => {
-        if (!cancelled) setState({ status: 'success', entitlement });
-      })
-      .catch((error) => {
-        if (!cancelled) setState({ status: 'error', error });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [getToken]);
 
   if (state.status === 'loading') {
     return (
