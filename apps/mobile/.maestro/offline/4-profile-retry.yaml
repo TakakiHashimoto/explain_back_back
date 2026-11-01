@@ -1,0 +1,13 @@
+# The backend is reachable again; Try again loads the usage and the plan badge.
+# No launchApp: it must keep the Profile error from 3-profile-error.
+appId: com.explainitback.app
+name: Profile retry
+---
+- tapOn:
+    id: profile-usage-retry
+- extendedWaitUntil:
+    visible:
+      id: profile-usage-analyses
+    timeout: 30000
+- assertVisible:
+    id: profile-plan-badge

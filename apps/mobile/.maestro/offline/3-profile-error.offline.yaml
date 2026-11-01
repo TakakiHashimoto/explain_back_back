@@ -1,0 +1,17 @@
+# Backend unreachable: Profile still renders; only the usage card shows an error with a retry,
+# and the plan badge is hidden instead of guessing "Free".
+# No launchApp: continues signed in from 2-retry.
+appId: com.explainitback.app
+name: Profile without the backend
+---
+- tapOn:
+    id: tab-home
+- tapOn:
+    id: header-profile
+- extendedWaitUntil:
+    visible:
+      id: profile-usage-retry
+    timeout: 40000
+- assertVisible: "Couldn't load usage"
+- assertNotVisible:
+    id: profile-plan-badge
