@@ -70,20 +70,21 @@ function formatResetIn(minutesLeft: number): string | null {
   return `Resets in ${hours}:${minutes}`;
 }
 
-/** Profile & settings (design "Profile & settings — Free (scrolled)"). */
-export default function ProfileScreen() {
+type ProfileContentProps = {
+  entitlement: Entitlement;
+  /** Time the screen was last focused; the reset countdown is computed from it. */
+  now: number;
+};
+
+/** Identity, usage and settings sections, shown once the entitlement has loaded. */
+function ProfileContent({ entitlement, now }: ProfileContentProps) {
   const { user } = useUser();
   const { signOut } = useClerk();
-  const insets = useSafeAreaInsets();
-  const [state, setState] = useState<State>({ status: 'loading' });
   // Mirrors this device's push opt-in; turning it on is where we ask for notification permission.
   const [remindersOn, setRemindersOn] = useState(false);
   // Only the hour and minute are used; the date part is ignored.
   const [reminderTime, setReminderTime] = useState(() => new Date(2000, 0, 1, 20, 0));
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
-
-  const { getToken } = useAuth();
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +99,177 @@ export default function ProfileScreen() {
     };
   }, []);
 
+  // ON asks for permission (or offers the settings when it was denied); the switch shows the result.
+  const onRemindersChange = (on: boolean) => {
+    if (!on) {
+      notifications.disable();
+      setRemindersOn(false);
+      return;
+    }
+    notifications
+      .enable()
+      .then(setRemindersOn)
+      .catch(() => setRemindersOn(false));
+  };
+
+  const { isPro, usage } = entitlement;
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+  const email = user?.primaryEmailAddress?.emailAddress;
+  const initial = (fullName || email || '?').charAt(0).toUpperCase();
+  const resetLabel = usage.windowEnd
+    ? formatResetIn(Math.ceil((new Date(usage.windowEnd).getTime() - now) / (60 * 1000)))
+    : null;
+
+  return (
+    <>
+      {/* Identity */}
+      <View className="flex-row items-center gap-[14px]">
+        <View className="justify-center items-center bg-primary-soft rounded-full w-14 h-14">
+          <Text className="font-sans font-bold text-[22px] text-primary-lip">{initial}</Text>
+        </View>
+        <View className="flex-1 gap-[2px] min-w-0">
+          {fullName ? <Text className="headline-sm">{fullName}</Text> : null}
+          {email ? <Text className="text-muted body-sm">{email}</Text> : null}
+        </View>
+        {isPro ? (
+          <View
+            testID="profile-plan-badge"
+            className="bg-primary px-[10px] py-[3px] border border-primary rounded-full"
+          >
+            <Text className="font-sans font-bold text-[12px] text-on-primary leading-[16px]">
+              Pro
+            </Text>
+          </View>
+        ) : (
+          <View
+            testID="profile-plan-badge"
+            className="bg-surface-muted px-[10px] py-[3px] border border-border rounded-full"
+          >
+            <Text className="font-sans font-bold text-[12px] text-text-secondary leading-[16px]">
+              Free
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* This week's usage */}
+      <View className="gap-[14px] card">
+        <View className="row-between">
+          <Text className="text-muted uppercase tracking-[0.9px] label-sm">This week’s usage</Text>
+          {resetLabel && <Text className="text-muted body-sm">{resetLabel}</Text>}
+        </View>
+        {/* UsageMeter is flex-1, so wrap each in a row to keep it from collapsing in a column. */}
+        <View className="flex-row">
+          <UsageMeter
+            testID="profile-usage-analyses"
+            label="Analyses"
+            used={usage.analyses.used}
+            limit={usage.analyses.limit}
+          />
+        </View>
+        <View className="flex-row">
+          <UsageMeter
+            testID="profile-usage-reviews"
+            label="Reviews"
+            used={usage.reviews.used}
+            limit={usage.reviews.limit}
+          />
+        </View>
+        {!isPro && (
+          <Pressable
+            testID="profile-upgrade"
+            accessibilityRole="button"
+            onPress={() => router.push('/paywall')}
+            className="btn-primary"
+          >
+            <Text className="btn-primary-text">Upgrade to Pro</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* Reminders */}
+      <View className="gap-sm">
+        <SectionLabel>Reminders</SectionLabel>
+        <View className="overflow-hidden list">
+          <View className="min-h-[52px] list-row">
+            <Text className="body-md">Review reminders</Text>
+            <Switch
+              testID="profile-reminders"
+              accessibilityLabel="Review reminders"
+              value={remindersOn}
+              onValueChange={onRemindersChange}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.surface}
+            />
+          </View>
+          <SettingsRow
+            testID="profile-reminder-time"
+            label="Reminder time"
+            value={reminderTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            onPress={() => setIsTimePickerOpen((open) => !open)}
+          />
+          {/* Android opens a dialog on mount and expects us to unmount it on confirm/cancel.
+                iOS renders it inline below the row (and fires on every wheel change), so it stays
+                open until the row is tapped again. Web renders nothing. */}
+          {isTimePickerOpen && (
+            <DateTimePicker
+              mode="time"
+              value={reminderTime}
+              accentColor={colors.primary}
+              onValueChange={(_event, date) => {
+                setReminderTime(date);
+                if (Platform.OS === 'android') setIsTimePickerOpen(false);
+              }}
+              onDismiss={() => setIsTimePickerOpen(false)}
+            />
+          )}
+        </View>
+      </View>
+
+      {/* Subscription */}
+      <View className="gap-sm">
+        <SectionLabel>Subscription</SectionLabel>
+        <View className="overflow-hidden list">
+          {/* TODO: wire to RevenueCat (Phase 4). */}
+          <SettingsRow testID="profile-manage-subscription" label="Manage subscription" isFirst />
+          <SettingsRow testID="profile-restore-purchases" label="Restore purchases" />
+        </View>
+      </View>
+
+      {/* Account */}
+      <View className="gap-sm">
+        <SectionLabel>Account</SectionLabel>
+        <View className="overflow-hidden list">
+          {/* TODO: destination screens. */}
+          <SettingsRow label="Privacy & recordings" isFirst />
+          <SettingsRow label="Help & feedback" />
+          <Pressable
+            testID="profile-sign-out"
+            accessibilityRole="button"
+            onPress={() => signOut()}
+            className="active:bg-background min-h-[52px] list-row list-row-divider"
+          >
+            <Text className="font-semibold text-danger-text body-md">Sign out</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* `expoConfig.version` comes from app.config.ts, which copies package.json's version. */}
+      <Text className="text-[12px] text-muted text-center body-sm">
+        Explain It Back · v{Constants.expoConfig?.version}
+      </Text>
+    </>
+  );
+}
+
+/** Profile & settings (design "Profile & settings — Free (scrolled)"). */
+export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
+  const [state, setState] = useState<State>({ status: 'loading' });
+  const [now, setNow] = useState(() => Date.now());
+
+  const { getToken } = useAuth();
+
   // @clerk/expo's useAuth returns a new getToken on every render. Keep the latest one in a ref so
   // the focus callback below stays stable; with getToken in its deps it re-ran on every render.
   const getTokenRef = useRef(getToken);
@@ -109,6 +281,7 @@ export default function ProfileScreen() {
     useCallback(() => {
       setNow(Date.now());
 
+      // Skip state updates when the component unmounts before the request finishes.
       let cancelled = false;
       getEntitlement(() => getTokenRef.current())
         .then((entitlement) => {
@@ -123,42 +296,6 @@ export default function ProfileScreen() {
     }, []),
   );
 
-  // ON asks for permission (or offers the settings when it was denied); the switch shows the result.
-  const onRemindersChange = (on: boolean) => {
-    if (!on) {
-      notifications.disable();
-      setRemindersOn(false);
-      return;
-    }
-    notifications
-      .enable()
-      .then(setRemindersOn)
-      .catch(() => setRemindersOn(false));
-  };
-
-  if (state.status === 'loading') {
-    return (
-      <View className="card row" accessibilityLiveRegion="polite">
-        <ActivityIndicator color={colors.primary} accessibilityLabel="Loading settings" />
-        <Text className="text-muted text-center body-md">Loading your settings…</Text>
-      </View>
-    );
-  }
-  if (state.status === 'error') {
-    return (
-      <View className="card row" accessibilityLiveRegion="polite">
-        <Text className="text-muted text-center body-sm">Failed to load settings</Text>
-      </View>
-    );
-  }
-  const { isPro, usage } = state.entitlement;
-  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
-  const email = user?.primaryEmailAddress?.emailAddress;
-  const initial = (fullName || email || '?').charAt(0).toUpperCase();
-  const resetLabel = usage.windowEnd
-    ? formatResetIn(Math.ceil((new Date(usage.windowEnd).getTime() - now) / (60 * 1000)))
-    : null;
-
   return (
     <>
       <Stack.Title>Profile</Stack.Title>
@@ -169,144 +306,18 @@ export default function ProfileScreen() {
         contentContainerClassName="w-full max-w-[600px] self-center gap-[18px] px-margin pt-lg"
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
-        {/* Identity */}
-        <View className="flex-row items-center gap-[14px]">
-          <View className="justify-center items-center bg-primary-soft rounded-full w-14 h-14">
-            <Text className="font-sans font-bold text-[22px] text-primary-lip">{initial}</Text>
+        {state.status === 'loading' ? (
+          <View className="gap-md" accessibilityLiveRegion="polite">
+            <ActivityIndicator color={colors.primary} accessibilityLabel="Loading settings" />
+            <Text className="text-muted text-center body-md">Loading your settings…</Text>
           </View>
-          <View className="flex-1 gap-[2px] min-w-0">
-            {fullName ? <Text className="headline-sm">{fullName}</Text> : null}
-            {email ? <Text className="text-muted body-sm">{email}</Text> : null}
+        ) : state.status === 'error' ? (
+          <View accessibilityLiveRegion="polite">
+            <Text className="text-muted text-center body-md">Failed to load settings</Text>
           </View>
-          {isPro ? (
-            <View
-              testID="profile-plan-badge"
-              className="bg-primary px-[10px] py-[3px] border border-primary rounded-full"
-            >
-              <Text className="font-sans font-bold text-[12px] text-on-primary leading-[16px]">
-                Pro
-              </Text>
-            </View>
-          ) : (
-            <View
-              testID="profile-plan-badge"
-              className="bg-surface-muted px-[10px] py-[3px] border border-border rounded-full"
-            >
-              <Text className="font-sans font-bold text-[12px] text-text-secondary leading-[16px]">
-                Free
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* This week's usage */}
-        <View className="gap-[14px] card">
-          <View className="row-between">
-            <Text className="text-muted uppercase tracking-[0.9px] label-sm">
-              This week’s usage
-            </Text>
-            {resetLabel && <Text className="text-muted body-sm">{resetLabel}</Text>}
-          </View>
-          {/* UsageMeter is flex-1, so wrap each in a row to keep it from collapsing in a column. */}
-          <View className="flex-row">
-            <UsageMeter
-              testID="profile-usage-analyses"
-              label="Analyses"
-              used={usage.analyses.used}
-              limit={usage.analyses.limit}
-            />
-          </View>
-          <View className="flex-row">
-            <UsageMeter
-              testID="profile-usage-reviews"
-              label="Reviews"
-              used={usage.reviews.used}
-              limit={usage.reviews.limit}
-            />
-          </View>
-          {!isPro && (
-            <Pressable
-              testID="profile-upgrade"
-              accessibilityRole="button"
-              onPress={() => router.push('/paywall')}
-              className="btn-primary"
-            >
-              <Text className="btn-primary-text">Upgrade to Pro</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Reminders */}
-        <View className="gap-sm">
-          <SectionLabel>Reminders</SectionLabel>
-          <View className="overflow-hidden list">
-            <View className="min-h-[52px] list-row">
-              <Text className="body-md">Review reminders</Text>
-              <Switch
-                testID="profile-reminders"
-                accessibilityLabel="Review reminders"
-                value={remindersOn}
-                onValueChange={onRemindersChange}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.surface}
-              />
-            </View>
-            <SettingsRow
-              testID="profile-reminder-time"
-              label="Reminder time"
-              value={reminderTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-              onPress={() => setIsTimePickerOpen((open) => !open)}
-            />
-            {/* Android opens a dialog on mount and expects us to unmount it on confirm/cancel.
-                iOS renders it inline below the row (and fires on every wheel change), so it stays
-                open until the row is tapped again. Web renders nothing. */}
-            {isTimePickerOpen && (
-              <DateTimePicker
-                mode="time"
-                value={reminderTime}
-                accentColor={colors.primary}
-                onValueChange={(_event, date) => {
-                  setReminderTime(date);
-                  if (Platform.OS === 'android') setIsTimePickerOpen(false);
-                }}
-                onDismiss={() => setIsTimePickerOpen(false)}
-              />
-            )}
-          </View>
-        </View>
-
-        {/* Subscription */}
-        <View className="gap-sm">
-          <SectionLabel>Subscription</SectionLabel>
-          <View className="overflow-hidden list">
-            {/* TODO: wire to RevenueCat (Phase 4). */}
-            <SettingsRow testID="profile-manage-subscription" label="Manage subscription" isFirst />
-            <SettingsRow testID="profile-restore-purchases" label="Restore purchases" />
-          </View>
-        </View>
-
-        {/* Account */}
-        <View className="gap-sm">
-          <SectionLabel>Account</SectionLabel>
-          <View className="overflow-hidden list">
-            {/* TODO: destination screens. */}
-            <SettingsRow label="Privacy & recordings" isFirst />
-            <SettingsRow label="Help & feedback" />
-            <Pressable
-              testID="profile-sign-out"
-              accessibilityRole="button"
-              onPress={() => signOut()}
-              className="active:bg-background min-h-[52px] list-row list-row-divider"
-            >
-              <Text className="font-semibold text-danger-text body-md">Sign out</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* `expoConfig.version` comes from app.config.ts, which copies package.json's version. */}
-        <Text className="text-[12px] text-muted text-center body-sm">
-          Explain It Back · v{Constants.expoConfig?.version}
-        </Text>
+        ) : (
+          <ProfileContent entitlement={state.entitlement} now={now} />
+        )}
       </ScrollView>
     </>
   );
