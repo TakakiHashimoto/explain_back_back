@@ -1,18 +1,15 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Explain It Back",
+    "slug": "explain-it-back",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "explainitback",
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "com.explainitback.app",
       "infoPlist": {
         "UIBackgroundModes": ["remote-notification"]
-      },
-      "entitlements": {
-        "aps-environment": "development"
       }
     },
     "android": {
