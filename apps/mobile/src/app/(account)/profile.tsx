@@ -3,7 +3,15 @@ import DateTimePicker from '@expo/ui/community/datetime-picker';
 import Constants from 'expo-constants';
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Entitlement } from '@/features/usage/types';
 import { getEntitlement } from '@/features/usage/api/api.usage';
@@ -118,12 +126,20 @@ export default function ProfileScreen() {
   }, [getToken]);
 
   if (state.status === 'loading') {
-    return <Text className="text-muted body-sm">Loading setting...</Text>;
+    return (
+      <View className="card row" accessibilityLiveRegion="polite">
+        <ActivityIndicator color={colors.primary} accessibilityLabel="Loading settings" />
+        <Text className="text-muted text-center body-md">Loading your settings…</Text>
+      </View>
+    );
   }
   if (state.status === 'error') {
-    return <Text className="text-muted body-sm">Failed to load setting</Text>;
+    return (
+      <View className="card row" accessibilityLiveRegion="polite">
+        <Text className="text-muted text-center body-sm">Failed to load settings</Text>
+      </View>
+    );
   }
-
   const { isPro, usage } = state.entitlement;
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
   const email = user?.primaryEmailAddress?.emailAddress;

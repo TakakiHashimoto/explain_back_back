@@ -1,12 +1,10 @@
 import { useAuth } from '@clerk/expo';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { colors } from '@/styles/tokens';
 import { getEntitlement } from '../api/api.usage';
 import { Entitlement } from '../types';
-
-import { dummyEntitlement } from '../data/dummy';
 
 type State =
   | { status: 'loading' }
@@ -39,7 +37,8 @@ export function UsageMeter({ label, used, limit, testID }: UsageMeterProps) {
         <Text className="font-sans text-[13px] text-text-secondary leading-[18px]">{label}</Text>
         <Text
           testID={testID && `${testID}-count`}
-          className="font-sans font-bold tabular-nums text-[13px] text-text leading-[18px]">
+          className="font-sans font-bold tabular-nums text-[13px] text-text leading-[18px]"
+        >
           {used} / {limit}
         </Text>
       </View>
@@ -72,9 +71,6 @@ export function UsageSummaryCard() {
     getEntitlement(getToken)
       .then((entitlement) => {
         if (!cancelled) setState({ status: 'success', entitlement });
-
-        // STUB
-        setState({ status: 'success', entitlement: dummyEntitlement });
       })
       .catch((error) => {
         if (!cancelled) setState({ status: 'error', error });
@@ -85,10 +81,19 @@ export function UsageSummaryCard() {
   }, [getToken]);
 
   if (state.status === 'loading') {
-    return <Text className="text-muted body-sm">Loading usage...</Text>;
+    return (
+      <View className="card row" accessibilityLiveRegion="polite">
+        <ActivityIndicator color={colors.primary} accessibilityLabel="Loading usage" />
+        <Text className="text-muted text-center body-md">Loading your usage…</Text>
+      </View>
+    );
   }
   if (state.status === 'error') {
-    return <Text className="text-muted body-sm">Failed to load usage</Text>;
+    return (
+      <View className="card row" accessibilityLiveRegion="polite">
+        <Text className="text-muted text-center body-sm">Failed to load usage</Text>;
+      </View>
+    );
   }
 
   const { isPro, usage } = state.entitlement;
