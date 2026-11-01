@@ -13,7 +13,7 @@ export function DueReviewsView({ state, onReload, onSelectQuestion }: {
   onSelectQuestion?: (questionId: string) => void;
 }) {
   return (
-    <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right']}>
+    <StyledSafeAreaView testID="screen-reviews" className="app-shell" edges={['top', 'left', 'right']}>
       <ScrollView contentContainerClassName="grow pb-xl">
         {/* The existing web tabs float at the top of the page. */}
         <View className={`screen stack max-w-[600px] ${Platform.OS === 'web' ? 'pt-24' : ''}`}>
@@ -33,7 +33,7 @@ export function DueReviewsView({ state, onReload, onSelectQuestion }: {
             <View className="card stack" accessibilityLiveRegion="polite">
               <Text accessibilityRole="header" className="headline-sm">Could not load reviews</Text>
               <Text accessibilityRole="alert" className="body-md text-muted">{state.message}</Text>
-              <Pressable accessibilityRole="button" onPress={onReload} className="btn-primary active:bg-primary-pressed">
+              <Pressable testID="reviews-retry" accessibilityRole="button" onPress={onReload} className="btn-primary active:bg-primary-pressed">
                 <Text className="btn-primary-text">Try again</Text>
               </Pressable>
             </View>
@@ -41,17 +41,17 @@ export function DueReviewsView({ state, onReload, onSelectQuestion }: {
 
           {state.status === 'success' && (
             <View className="stack">
-              <Text className="body-md" accessibilityLiveRegion="polite">
+              <Text testID="reviews-count" className="body-md" accessibilityLiveRegion="polite">
                 {state.reviews.length === 1 ? '1 review ready' : `${state.reviews.length} reviews ready`}
               </Text>
               {state.reviews.length === 0 ? (
-                <View className="card stack gap-sm">
+                <View testID="reviews-empty" className="card stack gap-sm">
                   <Text accessibilityRole="header" className="headline-sm">You’re all caught up</Text>
                   <Text className="body-md text-muted">No reviews are due right now. Check back later.</Text>
                 </View>
               ) : (
                 state.reviews.map((review) => (
-                  <Pressable key={review.questionId} className="card stack gap-sm" accessibilityRole="button"
+                  <Pressable key={review.questionId} testID={`reviews-item-${review.questionId}`} className="card stack gap-sm" accessibilityRole="button"
                     accessibilityLabel={`Review ${review.question.knowledgeGap.concept}`}
                     onPress={() => onSelectQuestion?.(review.questionId)}>
                     <Text accessibilityRole="header" className="label-lg text-primary">
@@ -61,7 +61,7 @@ export function DueReviewsView({ state, onReload, onSelectQuestion }: {
                   </Pressable>
                 ))
               )}
-              <Pressable accessibilityRole="button" onPress={onReload} className="btn-secondary">
+              <Pressable testID="reviews-refresh" accessibilityRole="button" onPress={onReload} className="btn-secondary">
                 <Text className="btn-secondary-text">Refresh reviews</Text>
               </Pressable>
             </View>

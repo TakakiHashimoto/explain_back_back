@@ -18,7 +18,7 @@ export function ReviewQuestionView({ state, onAnswerChange, onSubmit, onReload, 
   const uncertain = submission?.status === 'error' && submission.uncertain;
   const result = submission?.status === 'success' ? submission.result : undefined;
   return (
-    <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right', 'bottom']}>
+    <StyledSafeAreaView testID="screen-review-question" className="app-shell" edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="grow pb-xl">
           <View className="screen stack max-w-[600px]">
@@ -32,7 +32,7 @@ export function ReviewQuestionView({ state, onAnswerChange, onSubmit, onReload, 
             </View>}
             {state.status === 'error' && <View className="card stack">
               <Text accessibilityRole="alert" className="body-md">{state.message}</Text>
-              <Pressable accessibilityRole="button" onPress={onReload} className="btn-primary">
+              <Pressable testID="review-question-retry" accessibilityRole="button" onPress={onReload} className="btn-primary">
                 <Text className="btn-primary-text">Try again</Text>
               </Pressable>
             </View>}
@@ -46,7 +46,7 @@ export function ReviewQuestionView({ state, onAnswerChange, onSubmit, onReload, 
               {!result && <>
                 <View className="card border-0 gap-sm">
                   <Text className="label-sm">Your Mental Model</Text>
-                  <TextInput accessibilityLabel="Your answer" multiline textAlignVertical="top"
+                  <TextInput testID="review-question-answer-input" accessibilityLabel="Your answer" multiline textAlignVertical="top"
                     value={state.answer} onChangeText={onAnswerChange} editable={!pending && !uncertain}
                     placeholder="Explain your answer here…" placeholderTextColor={colors.placeholder}
                     className="textarea text-[15px] leading-[22px] bg-surface-muted border-0 p-[14px]" />
@@ -58,15 +58,15 @@ export function ReviewQuestionView({ state, onAnswerChange, onSubmit, onReload, 
                   <Text className="body-md">Evaluating your answer…</Text>
                   <Text className="body-sm text-muted">This can take up to two minutes. Leaving this screen does not cancel saving your answer.</Text>
                 </View>}
-                <Pressable accessibilityRole="button" onPress={onSubmit} disabled={pending || uncertain}
+                <Pressable testID="review-question-submit" accessibilityRole="button" onPress={onSubmit} disabled={pending || uncertain}
                   accessibilityState={{ disabled: pending || uncertain, busy: pending }}
                   className={`btn-primary shadow-card ${pending || uncertain ? 'opacity-50' : ''}`}>
                   <Text className="btn-primary-text">{pending ? 'Evaluating…' : 'Submit Answer'}</Text>
                 </Pressable>
               </>}
-              {result && <View className="card stack" accessibilityLiveRegion="polite">
+              {result && <View testID="review-question-result" className="card stack" accessibilityLiveRegion="polite">
                 <Text accessibilityRole="header" className="headline-md">Your feedback</Text>
-                <Text className="headline-lg text-primary">{result.attempt.score} / 100</Text>
+                <Text testID="review-question-score" className="headline-lg text-primary">{result.attempt.score} / 100</Text>
                 <Text className="label-lg">{result.attempt.correct ? 'Correct' : 'Not yet correct'}</Text>
                 <Text className="body-md">{result.attempt.feedback}</Text>
                 <Text className="body-md">Next review: {new Date(result.reviewSchedule.nextReviewAt).toLocaleString()}</Text>
@@ -74,7 +74,7 @@ export function ReviewQuestionView({ state, onAnswerChange, onSubmit, onReload, 
                 <Text className="body-sm text-muted">Your answer and next review have been saved.</Text>
               </View>}
             </>}
-            <Pressable accessibilityRole="button" onPress={onReturn} className="btn-secondary">
+            <Pressable testID="review-question-back" accessibilityRole="button" onPress={onReturn} className="btn-secondary">
               <Text className="btn-secondary-text">Back to Review</Text>
             </Pressable>
           </View>
