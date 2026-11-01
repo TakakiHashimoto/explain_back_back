@@ -6,7 +6,7 @@ import { ThemedView } from '@/components/themed-view';
 /** Renders Clerk's non-dismissible native authentication flow. */
 export default function SignInScreen() {
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView testID="screen-sign-in" style={styles.container}>
       <AuthView isDismissible={false} />
     </ThemedView>
   );

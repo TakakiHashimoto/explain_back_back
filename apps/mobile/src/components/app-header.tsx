@@ -25,6 +25,7 @@ export function AppHeader({ title }: AppHeaderProps) {
         </View>
         <View className="row">
           <Pressable
+            testID="header-notifications"
             accessibilityLabel="Notifications"
             accessibilityRole="button"
             hitSlop={8}
@@ -35,6 +36,7 @@ export function AppHeader({ title }: AppHeaderProps) {
           </Pressable>
 
           <Pressable
+            testID="header-profile"
             accessibilityLabel="Profile"
             accessibilityRole="button"
             hitSlop={8}

@@ -17,6 +17,8 @@ type UsageMeterProps = {
   label: string;
   used: number;
   limit: number;
+  /** Set on the meter; the "used / limit" text gets `${testID}-count`. */
+  testID?: string;
 };
 
 /** Linearly blends two `#rrggbb` colors; `t` = 0 returns `from`, 1 returns `to`. */
@@ -28,14 +30,16 @@ function mixColor(from: string, to: string, t: number): string {
 }
 
 /** One usage column: label, "used / limit" and a progress bar that shifts from primary to warning as it fills. */
-export function UsageMeter({ label, used, limit }: UsageMeterProps) {
+export function UsageMeter({ label, used, limit, testID }: UsageMeterProps) {
   const ratio = limit > 0 ? Math.min(used / limit, 1) : 1;
 
   return (
-    <View className="flex-1 gap-[6px] min-w-0">
+    <View testID={testID} className="flex-1 gap-[6px] min-w-0">
       <View className="flex-row justify-between">
         <Text className="font-sans text-[13px] text-text-secondary leading-[18px]">{label}</Text>
-        <Text className="font-sans font-bold tabular-nums text-[13px] text-text leading-[18px]">
+        <Text
+          testID={testID && `${testID}-count`}
+          className="font-sans font-bold tabular-nums text-[13px] text-text leading-[18px]">
           {used} / {limit}
         </Text>
       </View>
@@ -90,7 +94,7 @@ export function UsageSummaryCard() {
   const { isPro, usage } = state.entitlement;
 
   return (
-    <View className="gap-[10px] card-muted">
+    <View testID="usage-summary" className="gap-[10px] card-muted">
       <View className="flex-row justify-between items-center">
         <Text className="font-sans font-bold text-[11px] text-text-muted uppercase leading-[14px] tracking-[0.9px]">
           {isPro ? 'Pro' : 'Free'} plan · this week
@@ -103,8 +107,18 @@ export function UsageSummaryCard() {
         )}
       </View>
       <View className="flex-row gap-md">
-        <UsageMeter label="Analyses" used={usage.analyses.used} limit={usage.analyses.limit} />
-        <UsageMeter label="Reviews" used={usage.reviews.used} limit={usage.reviews.limit} />
+        <UsageMeter
+          testID="usage-summary-analyses"
+          label="Analyses"
+          used={usage.analyses.used}
+          limit={usage.analyses.limit}
+        />
+        <UsageMeter
+          testID="usage-summary-reviews"
+          label="Reviews"
+          used={usage.reviews.used}
+          limit={usage.reviews.limit}
+        />
       </View>
     </View>
   );

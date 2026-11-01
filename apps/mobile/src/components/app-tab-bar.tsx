@@ -52,6 +52,8 @@ export function AppTabBar({ state, descriptors, navigation, insets }: TabBarProp
     return (
       <Pressable
         key={route.name}
+        // Maestro reads `id:` as a regex, so drop route group parentheses: "(home)" -> "tab-home".
+        testID={`tab-${route.name.replace(/[()]/g, '')}`}
         className="flex-1 justify-center items-center gap-0.5 min-h-16"
         accessibilityLabel={icon === 'review' ? 'Review, 3 items' : label}
         onPress={onPress}
@@ -89,6 +91,7 @@ export function AppTabBar({ state, descriptors, navigation, insets }: TabBarProp
         {leftTabs.map(renderTab)}
         <Pressable
           key="mic"
+          testID="tab-bar-mic"
           accessibilityLabel="Speak"
           accessibilityRole="button"
           className="justify-center items-center bg-primary shadow-floating mx-xs -mt-5 rounded-full w-[52px] h-[52px]"

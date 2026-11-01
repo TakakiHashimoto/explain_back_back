@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const name = user?.firstName;
 
   return (
-    <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right']}>
+    <StyledSafeAreaView testID="screen-home" className="app-shell" edges={['top', 'left', 'right']}>
       <AppHeader title="" />
       <ScrollView
         showsVerticalScrollIndicator={false}

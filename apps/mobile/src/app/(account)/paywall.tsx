@@ -54,12 +54,14 @@ type PlanOptionProps = {
   badge?: string;
   selected: boolean;
   onPress: () => void;
+  testID?: string;
 };
 
 /** A radio-style plan card. The 1px border gets 1px more padding so both states have the same size. */
-function PlanOption({ label, price, badge, selected, onPress }: PlanOptionProps) {
+function PlanOption({ label, price, badge, selected, onPress, testID }: PlanOptionProps) {
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       onPress={onPress}
@@ -120,9 +122,10 @@ export default function PaywallScreen() {
   const reviewsLeft = usage ? Math.max(usage.reviews.limit - usage.reviews.used, 0) : 0;
 
   return (
-    <View className="app-shell" style={{ paddingTop: insets.top }}>
+    <View testID="screen-paywall" className="app-shell" style={{ paddingTop: insets.top }}>
       <View className="flex-row justify-between items-center px-sm py-[6px] min-h-14">
         <Pressable
+          testID="paywall-close"
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={() => router.back()}
@@ -131,7 +134,12 @@ export default function PaywallScreen() {
           <Icon name="close" size={22} color={colors.textSecondary} />
         </Pressable>
         {/* TODO: restore purchases via RevenueCat (Phase 4). */}
-        <Pressable accessibilityRole="button" onPress={() => {}} className="p-3">
+        <Pressable
+          testID="paywall-restore"
+          accessibilityRole="button"
+          onPress={() => {}}
+          className="p-3"
+        >
           <Text className="font-sans font-semibold text-[14px] text-primary leading-[20px]">
             Restore
           </Text>
@@ -146,7 +154,7 @@ export default function PaywallScreen() {
         {/* Heading */}
         <View className="gap-[12px]">
           {isLimitReached && (
-            <View className="chip-warning">
+            <View testID="paywall-limit-notice" className="chip-warning">
               <View className="bg-warning-text rounded-full w-[6px] h-[6px]" />
               <Text className="chip-warning-text">
                 {usage.analyses.used} of {usage.analyses.limit} analyses used this week
@@ -190,13 +198,24 @@ export default function PaywallScreen() {
           className="gap-[10px]"
         >
           {PLANS.map(({ id, ...option }) => (
-            <PlanOption key={id} {...option} selected={plan === id} onPress={() => setPlan(id)} />
+            <PlanOption
+              key={id}
+              testID={`paywall-plan-${id}`}
+              {...option}
+              selected={plan === id}
+              onPress={() => setPlan(id)}
+            />
           ))}
         </View>
 
         <View className="gap-[10px]">
           {/* TODO: purchase the selected plan via RevenueCat (Phase 4). */}
-          <Pressable accessibilityRole="button" onPress={() => {}} className="btn-primary">
+          <Pressable
+            testID="paywall-purchase"
+            accessibilityRole="button"
+            onPress={() => {}}
+            className="btn-primary"
+          >
             <Text className="btn-primary-text">Continue</Text>
           </Pressable>
           <Text className="text-muted text-center body-sm">

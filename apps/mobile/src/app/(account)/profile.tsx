@@ -26,12 +26,14 @@ type SettingsRowProps = {
   value?: string;
   onPress?: () => void;
   isFirst?: boolean;
+  testID?: string;
 };
 
 /** One tappable row in a settings list: label, optional value and a chevron. */
-function SettingsRow({ label, value, onPress, isFirst }: SettingsRowProps) {
+function SettingsRow({ label, value, onPress, isFirst, testID }: SettingsRowProps) {
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       onPress={onPress}
       className={`list-row min-h-[52px] active:bg-background ${isFirst ? '' : 'list-row-divider'}`}
@@ -92,6 +94,7 @@ export default function ProfileScreen() {
     <>
       <Stack.Title>Profile</Stack.Title>
       <ScrollView
+        testID="screen-profile"
         className="app-shell"
         showsVerticalScrollIndicator={false}
         contentContainerClassName="w-full max-w-[600px] self-center gap-[18px] px-margin pt-lg"
@@ -107,13 +110,19 @@ export default function ProfileScreen() {
             {email ? <Text className="text-muted body-sm">{email}</Text> : null}
           </View>
           {isPro ? (
-            <View className="bg-primary px-[10px] py-[3px] border border-primary rounded-full">
+            <View
+              testID="profile-plan-badge"
+              className="bg-primary px-[10px] py-[3px] border border-primary rounded-full"
+            >
               <Text className="font-sans font-bold text-[12px] text-on-primary leading-[16px]">
                 Pro
               </Text>
             </View>
           ) : (
-            <View className="bg-surface-muted px-[10px] py-[3px] border border-border rounded-full">
+            <View
+              testID="profile-plan-badge"
+              className="bg-surface-muted px-[10px] py-[3px] border border-border rounded-full"
+            >
               <Text className="font-sans font-bold text-[12px] text-text-secondary leading-[16px]">
                 Free
               </Text>
@@ -131,13 +140,24 @@ export default function ProfileScreen() {
           </View>
           {/* UsageMeter is flex-1, so wrap each in a row to keep it from collapsing in a column. */}
           <View className="flex-row">
-            <UsageMeter label="Analyses" used={usage.analyses.used} limit={usage.analyses.limit} />
+            <UsageMeter
+              testID="profile-usage-analyses"
+              label="Analyses"
+              used={usage.analyses.used}
+              limit={usage.analyses.limit}
+            />
           </View>
           <View className="flex-row">
-            <UsageMeter label="Reviews" used={usage.reviews.used} limit={usage.reviews.limit} />
+            <UsageMeter
+              testID="profile-usage-reviews"
+              label="Reviews"
+              used={usage.reviews.used}
+              limit={usage.reviews.limit}
+            />
           </View>
           {!isPro && (
             <Pressable
+              testID="profile-upgrade"
               accessibilityRole="button"
               onPress={() => router.push('/paywall')}
               className="btn-primary"
@@ -154,6 +174,7 @@ export default function ProfileScreen() {
             <View className="min-h-[52px] list-row">
               <Text className="body-md">Review reminders</Text>
               <Switch
+                testID="profile-reminders"
                 accessibilityLabel="Review reminders"
                 value={remindersOn}
                 onValueChange={setRemindersOn}
@@ -162,6 +183,7 @@ export default function ProfileScreen() {
               />
             </View>
             <SettingsRow
+              testID="profile-reminder-time"
               label="Reminder time"
               value={reminderTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
               onPress={() => setIsTimePickerOpen((open) => !open)}
@@ -189,8 +211,8 @@ export default function ProfileScreen() {
           <SectionLabel>Subscription</SectionLabel>
           <View className="overflow-hidden list">
             {/* TODO: wire to RevenueCat (Phase 4). */}
-            <SettingsRow label="Manage subscription" isFirst />
-            <SettingsRow label="Restore purchases" />
+            <SettingsRow testID="profile-manage-subscription" label="Manage subscription" isFirst />
+            <SettingsRow testID="profile-restore-purchases" label="Restore purchases" />
           </View>
         </View>
 
@@ -202,6 +224,7 @@ export default function ProfileScreen() {
             <SettingsRow label="Privacy & recordings" isFirst />
             <SettingsRow label="Help & feedback" />
             <Pressable
+              testID="profile-sign-out"
               accessibilityRole="button"
               onPress={() => signOut()}
               className="active:bg-background min-h-[52px] list-row list-row-divider"
