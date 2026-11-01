@@ -1,0 +1,39 @@
+# Signs in through Clerk's native AuthView with a test address (env EMAIL).
+# `+clerk_test` addresses get no email; the code is always 424242 (development instances only).
+appId: com.explainitback.app
+---
+# Already signed in: sign out first so the flow always starts from the sign-in screen.
+- extendedWaitUntil:
+    visible:
+      id: "screen-sign-in|tab-bar-mic"
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: tab-bar-mic
+    file: sign-out.yaml
+
+- extendedWaitUntil:
+    visible: "Enter your email"
+    timeout: 60000
+# Clerk pre-fills the last identifier and eraseText only deletes left of the cursor,
+# so select all first. The point is the email field on the Small_Phone AVD (720x1280).
+- longPressOn:
+    point: "50%,25%"
+- tapOn:
+    text: "Select all"
+    optional: true
+- eraseText: 5
+- inputText: ${EMAIL}
+- hideKeyboard
+- tapOn: "Continue"
+
+- extendedWaitUntil:
+    visible: "Check your email"
+    timeout: 30000
+# The code field is focused when the screen opens.
+- inputText: "424242"
+- extendedWaitUntil:
+    visible:
+      id: tab-bar-mic
+    timeout: 30000

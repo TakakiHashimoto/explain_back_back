@@ -1,0 +1,10 @@
+# MOBILE-09: the backend is reachable again; Try again loads the list.
+# No launchApp: it must keep the error screen from 1-error.
+appId: com.explainitback.app
+name: Retry after the backend is back
+---
+- tapOn:
+    id: reviews-retry
+- extendedWaitUntil:
+    visible: "1 review ready"
+    timeout: 30000

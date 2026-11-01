@@ -1,0 +1,38 @@
+# AI-05, FAILURE-05: a failed evaluation shows an error and saves nothing.
+# DB check: 0 attempts and the schedule unchanged (intervalDays 1, runner output).
+appId: com.explainitback.app
+name: Evaluation failure
+---
+- launchApp
+- runFlow:
+    file: ../common/sign-in.yaml
+    env:
+      EMAIL: e2e-user1+clerk_test@example.com
+- runFlow: ../common/open-reviews.yaml
+- tapOn:
+    id: "reviews-item-.*"
+- extendedWaitUntil:
+    visible:
+      id: screen-review-question
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: review-question-answer-input
+- tapOn:
+    id: review-question-answer-input
+- inputText: "This answer should fail"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: review-question-submit
+- tapOn:
+    id: review-question-submit
+- extendedWaitUntil:
+    visible: "We could not confirm the result.*"
+    timeout: 70000
+- scrollUntilVisible:
+    element:
+      id: review-question-submit
+      enabled: false
+- assertNotVisible:
+    id: review-question-result

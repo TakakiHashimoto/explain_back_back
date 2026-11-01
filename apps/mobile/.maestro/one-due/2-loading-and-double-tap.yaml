@@ -1,0 +1,53 @@
+# MOBILE-06, ANSWER-08/09, SCHEDULE-02, AI-04: a slow evaluation shows a loading state and
+# rapid taps send one request. DB check: the question has exactly 1 attempt (runner output).
+appId: com.explainitback.app
+name: Loading state and double tap
+---
+- launchApp
+- runFlow:
+    file: ../common/sign-in.yaml
+    env:
+      EMAIL: e2e-user1+clerk_test@example.com
+- runFlow: ../common/open-reviews.yaml
+- tapOn:
+    id: "reviews-item-.*"
+- extendedWaitUntil:
+    visible:
+      id: screen-review-question
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: review-question-answer-input
+- tapOn:
+    id: review-question-answer-input
+- inputText: "It remembers variables. score=60 delay=3000"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: review-question-submit
+- tapOn:
+    id: review-question-submit
+    repeat: 3
+    delay: 50
+- scrollUntilVisible:
+    element: "Evaluating your answer…"
+- scrollUntilVisible:
+    element:
+      id: review-question-submit
+      enabled: false
+- extendedWaitUntil:
+    notVisible:
+      id: review-question-submit
+    timeout: 70000
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: review-question-score
+      text: "60 / 100"
+- scrollUntilVisible:
+    element: "Not yet correct"
+- scrollUntilVisible:
+    element: "Review interval: 2 days"

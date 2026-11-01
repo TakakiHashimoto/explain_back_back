@@ -1,0 +1,10 @@
+# Signs in while the backend is reachable. Signing out needs the backend (Profile loads the
+# entitlement first), so the offline flow cannot start from a signed-in state on its own.
+appId: com.explainitback.app
+name: Sign in before going offline
+---
+- launchApp
+- runFlow:
+    file: ../common/sign-in.yaml
+    env:
+      EMAIL: e2e-user1+clerk_test@example.com

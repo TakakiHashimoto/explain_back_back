@@ -1,0 +1,20 @@
+# AUTH-09/10, MOBILE-15, E2E-01 steps 28-30: after switching accounts, only the new user's
+# question is listed.
+appId: com.explainitback.app
+name: Switch accounts
+---
+- launchApp
+- runFlow:
+    file: ../common/sign-in.yaml
+    env:
+      EMAIL: e2e-user1+clerk_test@example.com
+- runFlow: ../common/open-reviews.yaml
+- assertVisible: "E2E user1:.*"
+- runFlow: ../common/sign-out.yaml
+- runFlow:
+    file: ../common/sign-in.yaml
+    env:
+      EMAIL: e2e-user2+clerk_test@example.com
+- runFlow: ../common/open-reviews.yaml
+- assertVisible: "E2E user2:.*"
+- assertNotVisible: "E2E user1:.*"

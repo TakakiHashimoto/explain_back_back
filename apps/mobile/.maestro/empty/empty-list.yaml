@@ -1,0 +1,15 @@
+# MOBILE-01/02/03/07, DUE-07: an authenticated user with nothing due sees the empty state.
+appId: com.explainitback.app
+name: Empty due list
+---
+- launchApp
+- runFlow:
+    file: ../common/sign-in.yaml
+    env:
+      EMAIL: e2e-user1+clerk_test@example.com
+- runFlow: ../common/open-reviews.yaml
+- assertVisible: "0 reviews ready"
+- assertVisible:
+    id: reviews-empty
+# user2 has a due question; it must never show for user1 (AUTH-06).
+- assertNotVisible: "E2E user2:.*"

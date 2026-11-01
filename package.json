@@ -18,7 +18,8 @@
     "dev:ios": "concurrently -n BACKEND,IOS \"bun run backend\" \"bun run ios\"",
     "dev:all": "concurrently \"bun run backend\" \"bun run start:mobile\"",
     "typecheck:backend": "bun run --filter @explain-it-back/backend typecheck",
-    "maestro": "maestro test apps/mobile/.maestro/"
+    "backend:e2e": "bun run --filter @explain-it-back/backend dev:e2e",
+    "e2e": "bun apps/mobile/scripts/e2e.ts"
   },
   "devDependencies": {
     "concurrently": "^10.0.5",

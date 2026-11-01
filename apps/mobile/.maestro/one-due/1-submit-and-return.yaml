@@ -1,0 +1,90 @@
+# E2E-01 (UI part), MOBILE-11/12, ANSWER-01/02/03, AI-03, FEEDBACK-01/04/06/07/08.
+# The fake evaluator returns score 90 -> interval 7 days.
+# Check the DB side with `bun run e2e:fixtures verify` (the runner prints it).
+# The question screen is taller than the Small_Phone screen, so lower elements are
+# reached with scrollUntilVisible (it fails when the element never appears).
+appId: com.explainitback.app
+name: Submit an answer and return to the list
+---
+- launchApp
+- runFlow:
+    file: ../common/sign-in.yaml
+    env:
+      EMAIL: e2e-user1+clerk_test@example.com
+- runFlow: ../common/open-reviews.yaml
+- assertVisible: "1 review ready"
+- assertNotVisible: "E2E user2:.*"
+
+# MOBILE-11/12: the tapped question opens.
+- tapOn:
+    id: "reviews-item-.*"
+- extendedWaitUntil:
+    visible:
+      id: screen-review-question
+    timeout: 30000
+- assertVisible: ".*closure capture.*"
+
+# ANSWER-03: an empty answer is stopped on the client.
+- scrollUntilVisible:
+    element:
+      id: review-question-submit
+- tapOn:
+    id: review-question-submit
+- scrollUntilVisible:
+    element:
+      text: "Enter an answer in your own words before submitting."
+- assertVisible:
+    id: screen-review-question
+
+# ANSWER-01/02: type and submit.
+- scrollUntilVisible:
+    element:
+      id: review-question-answer-input
+    direction: UP
+- tapOn:
+    id: review-question-answer-input
+- inputText: "A closure keeps references to its outer variables. score=90"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: review-question-submit
+- tapOn:
+    id: review-question-submit
+# The answer form (with the submit button) is replaced by the result card.
+- extendedWaitUntil:
+    notVisible:
+      id: review-question-submit
+    timeout: 70000
+
+# AI-03, FEEDBACK-01/04: read the result from the top down.
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: review-question-score
+      text: "90 / 100"
+- scrollUntilVisible:
+    element: "Correct"
+- scrollUntilVisible:
+    element: "\\[fake\\] score=90"
+- scrollUntilVisible:
+    element: "Next review:.*"
+- scrollUntilVisible:
+    element: "Review interval: 7 days"
+
+# FEEDBACK-06/07/08, MOBILE-10: back on the list, the answered question is gone.
+# Known issue: the list does not reload on focus, so this part is expected to fail for now.
+- scrollUntilVisible:
+    element:
+      id: review-question-back
+- tapOn:
+    id: review-question-back
+- extendedWaitUntil:
+    visible:
+      id: screen-reviews
+    timeout: 15000
+- assertVisible: "0 reviews ready"
+- assertVisible:
+    id: reviews-empty

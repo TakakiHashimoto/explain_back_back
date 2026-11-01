@@ -1,0 +1,14 @@
+# DUE-03/04: a question due an hour ago is listed, one due in 3 days is not.
+appId: com.explainitback.app
+name: Due list excludes future reviews
+---
+- launchApp
+- runFlow:
+    file: ../common/sign-in.yaml
+    env:
+      EMAIL: e2e-user1+clerk_test@example.com
+- runFlow: ../common/open-reviews.yaml
+- assertVisible: "1 review ready"
+- assertVisible: ".*closure capture.*"
+- assertNotVisible: ".*future question hidden.*"
+- assertNotVisible: "E2E user2:.*"

@@ -1,0 +1,9 @@
+# Opens the Review tab and waits until the due list has loaded.
+appId: com.explainitback.app
+---
+- tapOn:
+    id: tab-reviews
+- extendedWaitUntil:
+    visible:
+      id: reviews-count
+    timeout: 30000

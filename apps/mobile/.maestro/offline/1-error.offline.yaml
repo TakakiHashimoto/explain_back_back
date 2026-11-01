@@ -1,0 +1,12 @@
+# MOBILE-08, FAILURE-01: the runner removes `adb reverse tcp:3000`, so the backend is unreachable.
+# No launchApp: continues signed in from 0-sign-in. The Review tab has not loaded yet.
+appId: com.explainitback.app
+name: Backend unreachable
+---
+- tapOn:
+    id: tab-reviews
+- extendedWaitUntil:
+    visible: "Could not load reviews"
+    timeout: 40000
+- assertVisible:
+    id: reviews-retry

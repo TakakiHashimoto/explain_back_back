@@ -1,0 +1,16 @@
+# Signs out from any tab via Profile.
+appId: com.explainitback.app
+---
+- tapOn:
+    id: tab-home
+- tapOn:
+    id: header-profile
+- scrollUntilVisible:
+    element:
+      id: profile-sign-out
+- tapOn:
+    id: profile-sign-out
+- extendedWaitUntil:
+    visible:
+      id: screen-sign-in
+    timeout: 15000
