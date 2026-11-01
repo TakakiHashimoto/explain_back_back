@@ -6,7 +6,6 @@ import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
 import { notifications } from '@/features/notifications/onesignal';
 import { colors } from '@/styles/tokens';
-import { useColorScheme } from 'react-native';
 import { apiFetch } from '@/lib/api-fetch';
 import { purchases } from '@/features/purchases/revenuecat';
 
