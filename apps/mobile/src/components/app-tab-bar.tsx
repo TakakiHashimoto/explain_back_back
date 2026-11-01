@@ -12,7 +12,7 @@ type TabBarProps = Parameters<TabBarRenderer>[0];
 const routeIcons: Partial<Record<string, ComponentProps<typeof Icon>['name']>> = {
   '(home)': 'home',
   topics: 'topics',
-  review: 'review',
+  reviews: 'review',
   progress: 'progress',
 };
 
