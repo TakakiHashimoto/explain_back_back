@@ -8,8 +8,8 @@ import {
 } from 'expo-audio';
 import { router } from 'expo-router';
 import { styled } from 'nativewind';
-import { useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
@@ -57,12 +57,31 @@ function uploadErrorMessage(error: unknown): string {
   return 'Upload failed. Check your connection and try again.';
 }
 
+/**
+ * Asks for the microphone with the OS dialog, the same way notifications ask from the reminders switch.
+ * Once the OS will no longer show the dialog (denied before), it offers the app settings instead.
+ */
+async function ensureMicPermission(): Promise<boolean> {
+  const current = await getRecordingPermissionsAsync();
+  if (current.granted) return true;
+  if (current.canAskAgain) return (await requestRecordingPermissionsAsync()).granted;
+
+  Alert.alert(
+    'Microphone access is off',
+    'Turn on the microphone for Explain It Back in Settings to record your explanation.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Open Settings', onPress: () => Linking.openSettings() },
+    ],
+  );
+  return false;
+}
+
 /** Records a spoken explanation, uploads it and shows the transcript (design "Record explanation"). */
 export default function RecordExplanationScreen() {
   const { getToken } = useAuth();
   const [topic, setTopic] = useState('');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
-  const [micDenied, setMicDenied] = useState(false);
   // Guards against double taps sending the same recording twice (spec §59.11)
   const uploadingRef = useRef(false);
   const startedAtRef = useRef(0);
@@ -82,12 +101,6 @@ export default function RecordExplanationScreen() {
   });
   const recorderState = useAudioRecorderState(recorder, 250);
 
-  useEffect(() => {
-    getRecordingPermissionsAsync().then((p) => {
-      if (!p.granted && !p.canAskAgain) setMicDenied(true);
-    });
-  }, []);
-
   const elapsedSec = recorderState.durationMillis / 1000;
 
   const stopRecording = async () => {
@@ -96,12 +109,7 @@ export default function RecordExplanationScreen() {
   };
 
   const startRecording = async () => {
-    const permission = await requestRecordingPermissionsAsync();
-    if (!permission.granted) {
-      setMicDenied(true);
-      return;
-    }
-    setMicDenied(false);
+    if (!(await ensureMicPermission())) return;
     await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
     await recorder.prepareToRecordAsync();
     // Stops on its own at the limit; the server rejects anything longer anyway.
@@ -127,25 +135,6 @@ export default function RecordExplanationScreen() {
   const topicReady = topic.trim().length > 0;
   const isRecording = phase.kind === 'recording';
   const canRecord = topicReady && (phase.kind === 'idle' || phase.kind === 'recorded' || phase.kind === 'failed');
-
-  if (micDenied) {
-    return (
-      <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right', 'bottom']}>
-        <View className="flex-1 justify-center gap-md px-margin">
-          <Text className="headline-sm">Microphone access is off</Text>
-          <Text className="body-md text-muted">
-            Explain It Back needs the microphone to hear your explanation. Turn it on in Settings, then come back.
-          </Text>
-          <Pressable className="btn-primary" accessibilityRole="button" onPress={() => Linking.openSettings()}>
-            <Text className="btn-primary-text">Open Settings</Text>
-          </Pressable>
-          <Pressable className="btn-secondary" accessibilityRole="button" onPress={() => router.back()}>
-            <Text className="btn-secondary-text">Go back</Text>
-          </Pressable>
-        </View>
-      </StyledSafeAreaView>
-    );
-  }
 
   return (
     <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right', 'bottom']}>
