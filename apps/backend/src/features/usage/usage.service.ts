@@ -96,7 +96,7 @@ export async function getUsage(userId: string, now: Date): Promise<Usage> {
  * @param now - The current date and time.
  * @returns An object containing whether the window is new and its start date.
  */
-export function resolveWindow(
+function resolveWindow(
   windowStart: Date | null,
   windowPlan: Plan | null,
   plan: Plan,
