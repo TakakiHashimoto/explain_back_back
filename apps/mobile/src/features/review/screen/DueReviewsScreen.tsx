@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/expo';
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 
 import type { GetSessionToken } from '../api/api.review';
 import { useDueReviews } from '../hooks/useDueReviews';
@@ -7,7 +7,9 @@ import { DueReviewsView } from './DueReviewsView';
 
 function AuthenticatedReviews({ getToken }: { getToken: GetSessionToken }) {
   const { state, reload } = useDueReviews(getToken);
-  return <DueReviewsView state={state} onReload={reload} />;
+  const router = useRouter();
+  return <DueReviewsView state={state} onReload={reload} onSelectQuestion={(questionId) =>
+    router.push({ pathname: '/review/[questionId]', params: { questionId } })} />;
 }
 
 export default function DueReviewsScreen() {

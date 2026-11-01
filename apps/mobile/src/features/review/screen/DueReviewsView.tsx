@@ -7,9 +7,10 @@ import type { DueReviewsState } from '../hooks/loadDueReviews';
 
 const StyledSafeAreaView = styled(SafeAreaView);
 
-export function DueReviewsView({ state, onReload }: {
+export function DueReviewsView({ state, onReload, onSelectQuestion }: {
   state: DueReviewsState;
   onReload?: () => void;
+  onSelectQuestion?: (questionId: string) => void;
 }) {
   return (
     <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right']}>
@@ -50,12 +51,14 @@ export function DueReviewsView({ state, onReload }: {
                 </View>
               ) : (
                 state.reviews.map((review) => (
-                  <View key={review.questionId} className="card stack gap-sm">
+                  <Pressable key={review.questionId} className="card stack gap-sm" accessibilityRole="button"
+                    accessibilityLabel={`Review ${review.question.knowledgeGap.concept}`}
+                    onPress={() => onSelectQuestion?.(review.questionId)}>
                     <Text accessibilityRole="header" className="label-lg text-primary">
                       {review.question.knowledgeGap.concept}
                     </Text>
                     <Text className="headline-sm">{review.question.question}</Text>
-                  </View>
+                  </Pressable>
                 ))
               )}
               <Pressable accessibilityRole="button" onPress={onReload} className="btn-secondary">

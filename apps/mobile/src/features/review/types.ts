@@ -33,3 +33,23 @@ export type DueReview = {
     knowledgeGap: { concept: string };
   };
 };
+
+export type ReviewQuestionDetail = DueReview['question'];
+
+/** Persisted records returned by POST /review-questions/:questionId/attempts. */
+export type ReviewResult = {
+  attempt: ReviewEvaluation & {
+    id: string;
+    questionId: string;
+    answer: string;
+    createdAt: string;
+  };
+  reviewSchedule: {
+    id: string;
+    questionId: string;
+    intervalDays: number;
+    nextReviewAt: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+};
