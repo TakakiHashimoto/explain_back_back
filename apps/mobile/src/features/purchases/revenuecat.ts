@@ -47,18 +47,23 @@ export const purchases = {
    * Monthly/annual packages of the current offering,
    * or null when unavailable.
    */
-  getPlans(): Promise<{
+  async getPlans(): Promise<{
     monthly: PurchasesPackage;
     annual: PurchasesPackage;
   } | null> {
-    return Purchases.getOfferings().then((offering) => {
-      const monthly = offering.current?.monthly;
-      const annual = offering.current?.annual;
+    // Paywall can open before identify (e.g. /me is slow or failed); treat it as "unavailable".
+    if (!(await Purchases.isConfigured())) return null;
+
+    const offerings = await Purchases.getOfferings();
+    if (!offerings) {
+      return null;
+    }
+    const monthly = offerings.current?.monthly;
+    const annual = offerings.current?.annual;
       if (!monthly || !annual) {
         return null;
       }
       return { monthly, annual };
-    });
   },
 
   /**
