@@ -34,10 +34,8 @@ export const purchases = {
     apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
 
     if (currentUserId === undefined) {
-      console.log('purchases.identify: first time');
       Purchases.configure({ apiKey, appUserID: appUserId });
     } else if (currentUserId !== appUserId) {
-      console.log('purchases.identify: logIn');
       await Purchases.logIn(appUserId);
     }
     currentUserId = appUserId;
@@ -60,25 +58,32 @@ export const purchases = {
     }
     const monthly = offerings.current?.monthly;
     const annual = offerings.current?.annual;
-      if (!monthly || !annual) {
-        return null;
-      }
-      return { monthly, annual };
+    if (!monthly || !annual) {
+      return null;
+    }
+    return { monthly, annual };
   },
 
   /**
    * Buys a package; cancellation is a normal result, not an error.
    */
-  async purchase(pkg: PurchasesPackage): Promise<'purchased' | 'cancelled'> {
+  async purchase(
+    pkg: PurchasesPackage,
+  ): Promise<'purchased' | 'cancelled' | 'pending' | 'unverified'> {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       if (!customerInfo.entitlements.active[PRO_ENTITLEMENT]) {
-        throw new Error(`Purchase completed but "${PRO_ENTITLEMENT}" is not active`);
+        console.warn(`Purchase completed but "${PRO_ENTITLEMENT}" is not active`);
+        return 'unverified';
       }
       return 'purchased';
     } catch (e) {
-      if ((e as PurchasesError).code === Purchases.PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+      const code = (e as PurchasesError).code;
+      if (code === Purchases.PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
         return 'cancelled';
+      }
+      if (code === Purchases.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+        return 'pending';
       }
       throw e;
     }
