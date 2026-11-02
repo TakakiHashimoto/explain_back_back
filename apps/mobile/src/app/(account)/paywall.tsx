@@ -1,6 +1,6 @@
 import { useAuth } from '@clerk/expo';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/icon';
@@ -108,13 +108,20 @@ export default function PaywallScreen() {
     annual: PurchasesPackage;
   } | null>();
 
+  // @clerk/expo's useAuth returns a new getToken on every render. Keep the latest one in a ref so
+  // the focus callback below stays stable; with getToken in its deps, setNow re-ran it in a loop.
+  const getTokenRef = useRef(getToken);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  });
+
   useFocusEffect(
     useCallback(() => {
       setNow(Date.now());
 
       let cancelled = false;
       // The usage notes are optional, so a failed fetch just leaves them hidden.
-      getEntitlement(getToken)
+      getEntitlement(() => getTokenRef.current())
         .then((result) => {
           if (!cancelled) setEntitlement(result);
         })
@@ -129,7 +136,7 @@ export default function PaywallScreen() {
       return () => {
         cancelled = true;
       };
-    }, [getToken]),
+    }, []),
   );
 
   // Profile can open the Paywall before the limit, so the limit notes show only when it is reached.

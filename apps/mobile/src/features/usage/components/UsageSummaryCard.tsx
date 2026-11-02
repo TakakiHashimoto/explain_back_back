@@ -118,6 +118,7 @@ export function UsageSummaryCard() {
         .catch((error) => {
           if (!cancelled) setState({ status: 'error', error });
         });
+
       return () => {
         cancelled = true;
       };

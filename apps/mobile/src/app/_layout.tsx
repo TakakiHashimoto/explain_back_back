@@ -3,8 +3,7 @@ import '@/globals.css';
 import { ClerkProvider, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { useEffect } from 'react';
-import { notifications } from '@/features/notifications/onesignal';
+import { useEffect, useRef } from 'react';
 import { colors } from '@/styles/tokens';
 import { apiFetch } from '@/lib/api-fetch';
 import { purchases } from '@/features/purchases/revenuecat';
@@ -28,12 +27,17 @@ if (!publishableKey) {
 function RootNavigator() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  });
+
   useEffect(() => {
     if (!isSignedIn) return;
-    apiFetch<{ id: string }>('/api/v1/me', getToken)
+    apiFetch<{ id: string }>('/api/v1/me', () => getTokenRef.current())
       .then(({ id }) => purchases.identify(id))
       .catch((e) => console.warn('purchases identify failed', e));
-  }, [isSignedIn, getToken]);
+  }, [isSignedIn]);
 
   if (!isLoaded) return null;
 
@@ -55,8 +59,6 @@ function RootNavigator() {
 
 /** Renders nested routes with Clerk authentication, token caching, and the light theme. */
 export default function RootLayout() {
-  useEffect(() => notifications.initialize(), []);
-
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <NotificationIdentityBridge />
