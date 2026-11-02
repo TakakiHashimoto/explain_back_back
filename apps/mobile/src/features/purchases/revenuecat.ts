@@ -9,9 +9,11 @@ export const purchases = {
   /**
    * First call configures the SDK;
    * later calls with another id switch users via logIn.
+   * Sign-out intentionally does nothing here: logOut() would create an anonymous ID,
+   * and the next sign-in switches users via logIn.
    */
   async identify(appUserId: string): Promise<void> {
-    Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+    if (__DEV__) Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
 
     let apiKey = '';
     if (Platform.OS === 'ios') {
