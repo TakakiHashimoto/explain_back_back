@@ -10,7 +10,7 @@ import { colors } from '@/styles/tokens';
 import { purchases } from '@/features/purchases/revenuecat';
 import { PurchasesPackage } from 'react-native-purchases';
 
-type PlanId = 'yearly' | 'monthly';
+type PlanId = 'annual' | 'monthly';
 
 // Per 7-day window, from docs/free-pro/README.md.
 const COMPARISON = [
@@ -20,10 +20,10 @@ const COMPARISON = [
   { label: 'Review reminders', free: 'Yes', pro: 'Yes' },
 ];
 
-// TODO: replace with the RevenueCat offering's prices (Phase 4). The yearly price is only an example.
-const PLANS: { id: PlanId; label: string; price: string; badge?: string }[] = [
-  { id: 'yearly', label: 'Yearly', price: '¥7,800 / year', badge: 'Best value' },
-  { id: 'monthly', label: 'Monthly', price: '¥980 / month' },
+// Display order and labels belong to the UI; prices come from the store via RevenueCat.
+const PLANS: { id: PlanId; label: string; period: string; badge?: string }[] = [
+  { id: 'annual', label: 'Yearly', period: ' / year', badge: 'Best value' },
+  { id: 'monthly', label: 'Monthly', period: ' / month' },
 ];
 
 type ComparisonRowProps = {
@@ -99,7 +99,7 @@ function PlanOption({ label, price, badge, selected, onPress, testID }: PlanOpti
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const { getToken } = useAuth();
-  const [plan, setPlan] = useState<PlanId>('yearly');
+  const [plan, setPlan] = useState<PlanId>('annual');
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -132,7 +132,9 @@ export default function PaywallScreen() {
         .then((result) => {
           if (!cancelled) setPlans(result);
         })
-        .catch(() => {});
+        .catch(() => {
+          if (!cancelled) setPlans(null);
+        });
       return () => {
         cancelled = true;
       };
@@ -148,13 +150,22 @@ export default function PaywallScreen() {
   const reviewsLeft = usage ? Math.max(usage.reviews.limit - usage.reviews.used, 0) : 0;
 
   async function onContinue() {
-    const pkg = plan === 'yearly' ? plans?.annual : plans?.monthly;
+    const pkg = plans?.[plan];
     if (!pkg || isPurchasing) return;
     setIsPurchasing(true);
     try {
-      if ((await purchases.purchase(pkg)) === 'purchased') {
+      const result = await purchases.purchase(pkg);
+      if (result === 'purchased') {
         Alert.alert("You're Pro now", undefined, [{ text: 'OK', onPress: () => router.back() }]);
+      } else if (result === 'pending') {
+        Alert.alert('Purchase pending', "You'll get Pro once the payment is approved.");
+      } else if (result === 'unverified') {
+        Alert.alert(
+          'Purchase received',
+          'Pro may take a moment to appear. If it does not, tap Restore.',
+        );
       }
+      // 'cancelled': show nothing.
     } catch {
       Alert.alert('Purchase failed', 'Please try again.');
     } finally {
@@ -238,15 +249,19 @@ export default function PaywallScreen() {
           accessibilityLabel="Choose a plan"
           className="gap-[10px]"
         >
-          {PLANS.map(({ id, ...option }) => (
-            <PlanOption
-              key={id}
-              testID={`paywall-plan-${id}`}
-              {...option}
-              selected={plan === id}
-              onPress={() => setPlan(id)}
-            />
-          ))}
+          {PLANS.map(({ id, period, ...option }) => {
+            const pkg = plans?.[id];
+            return (
+              <PlanOption
+                key={id}
+                testID={`paywall-plan-${id}`}
+                {...option}
+                price={pkg ? pkg.product.priceString + period : '—'}
+                selected={plan === id}
+                onPress={() => setPlan(id)}
+              />
+            );
+          })}
         </View>
 
         <View className="gap-[10px]">
@@ -254,9 +269,11 @@ export default function PaywallScreen() {
             testID="paywall-purchase"
             accessibilityRole="button"
             onPress={onContinue}
-            className="btn-primary"
+            className={isPurchasing ? 'btn-ghost' : 'btn-primary'}
+            disabled={isPurchasing || !plans}
+            accessibilityState={{ disabled: isPurchasing || !plans }}
           >
-            <Text className="btn-primary-text">Continue</Text>
+            <Text className={isPurchasing ? 'btn-ghost-text' : 'btn-primary-text'}>Continue</Text>
           </Pressable>
           <Text className="text-muted text-center body-sm">
             Cancel anytime in your store settings.

@@ -9,9 +9,11 @@ export const purchases = {
   /**
    * First call configures the SDK;
    * later calls with another id switch users via logIn.
+   * Sign-out intentionally does nothing here: logOut() would create an anonymous ID,
+   * and the next sign-in switches users via logIn.
    */
   async identify(appUserId: string): Promise<void> {
-    Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+    if (__DEV__) Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
 
     let apiKey = '';
     if (Platform.OS === 'ios') {
@@ -32,10 +34,8 @@ export const purchases = {
     apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
 
     if (currentUserId === undefined) {
-      console.log('purchases.identify: first time');
       Purchases.configure({ apiKey, appUserID: appUserId });
     } else if (currentUserId !== appUserId) {
-      console.log('purchases.identify: logIn');
       await Purchases.logIn(appUserId);
     }
     currentUserId = appUserId;
@@ -45,33 +45,45 @@ export const purchases = {
    * Monthly/annual packages of the current offering,
    * or null when unavailable.
    */
-  getPlans(): Promise<{
+  async getPlans(): Promise<{
     monthly: PurchasesPackage;
     annual: PurchasesPackage;
   } | null> {
-    return Purchases.getOfferings().then((offering) => {
-      const monthly = offering.current?.monthly;
-      const annual = offering.current?.annual;
-      if (!monthly || !annual) {
-        return null;
-      }
-      return { monthly, annual };
-    });
+    // Paywall can open before identify (e.g. /me is slow or failed); treat it as "unavailable".
+    if (!(await Purchases.isConfigured())) return null;
+
+    const offerings = await Purchases.getOfferings();
+    if (!offerings) {
+      return null;
+    }
+    const monthly = offerings.current?.monthly;
+    const annual = offerings.current?.annual;
+    if (!monthly || !annual) {
+      return null;
+    }
+    return { monthly, annual };
   },
 
   /**
    * Buys a package; cancellation is a normal result, not an error.
    */
-  async purchase(pkg: PurchasesPackage): Promise<'purchased' | 'cancelled'> {
+  async purchase(
+    pkg: PurchasesPackage,
+  ): Promise<'purchased' | 'cancelled' | 'pending' | 'unverified'> {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       if (!customerInfo.entitlements.active[PRO_ENTITLEMENT]) {
-        throw new Error(`Purchase completed but "${PRO_ENTITLEMENT}" is not active`);
+        console.warn(`Purchase completed but "${PRO_ENTITLEMENT}" is not active`);
+        return 'unverified';
       }
       return 'purchased';
     } catch (e) {
-      if ((e as PurchasesError).code === Purchases.PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+      const code = (e as PurchasesError).code;
+      if (code === Purchases.PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
         return 'cancelled';
+      }
+      if (code === Purchases.PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+        return 'pending';
       }
       throw e;
     }
