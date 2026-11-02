@@ -1,12 +1,10 @@
-import { useAuth, useUser } from '@clerk/expo';
+import { useUser } from '@clerk/expo';
 import { styled } from 'nativewind';
-import { useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StartExplainingCard } from '@/features/explanation/components/StartExplainingCard';
 import { UsageSummaryCard } from '@/features/usage/components/UsageSummaryCard';
-import { apiFetch } from '@/lib/api-fetch';
 import { AppHeader } from '@/components/app-header';
 import { TAB_BAR_HEIGHT } from '@/components/app-tab-bar';
 
@@ -19,22 +17,10 @@ function greeting(hour: number): string {
   return 'Good evening';
 }
 
-/** Home dashboard (design "Home"); also bootstraps the user's backend account. */
+/** Home dashboard (design "Home") */
 export default function HomeScreen() {
   const { user } = useUser();
-  const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    const bootstrapUser = async () => {
-      try {
-        await apiFetch('/api/v1/me', getToken);
-      } catch (e) {
-        console.warn('/api/v1/me failed', e);
-      }
-    };
-    bootstrapUser();
-  }, [getToken]);
 
   const name = user?.firstName;
 
