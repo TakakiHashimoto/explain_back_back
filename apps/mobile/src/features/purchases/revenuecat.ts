@@ -16,22 +16,16 @@ export const purchases = {
     if (__DEV__) Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
 
     let apiKey = '';
-    if (Platform.OS === 'ios') {
-      apiKey = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY ?? '';
-      if (!apiKey) {
-        console.warn('Missing EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY');
-      }
-    } else if (Platform.OS === 'android') {
+    if (Platform.OS === 'android') {
       apiKey = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY ?? '';
       if (!apiKey) {
         console.warn('Missing EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY');
       }
     } else {
-      console.warn('Unexpected platform.');
+      console.warn(`Platform is not supported: ${Platform.OS}`);
     }
 
-    // HACK
-    apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
+    if (!apiKey) return; // Not configured: getPlans() returns null and the Paywall shows "unavailable".
 
     if (currentUserId === undefined) {
       Purchases.configure({ apiKey, appUserID: appUserId });
