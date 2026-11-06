@@ -32,6 +32,8 @@ export async function sendReviewReminder(
       external_id: [userId],
     },
     target_channel: "push",
+    // A navigation hint only; the app fetches reviews using its Clerk session.
+    data: { type: "due_review_reminder" },
     headings: {
       en: "Time to review",
     },

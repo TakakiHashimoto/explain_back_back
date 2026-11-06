@@ -2,6 +2,11 @@ name: Due Review Reminders
 
 on:
   workflow_dispatch:
+  # Provisional daily dry-run, UTC (not a precise timer).
+  # Live activation must also align this with the worker's >=16:00 UTC window.
+  # See docs/engineer-2-handoff.md.
+  schedule:
+    - cron: "17 0 * * *"
 
 permissions:
   contents: read

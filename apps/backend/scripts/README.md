@@ -32,9 +32,29 @@ NOTIFICATION_DRY_RUN=true bun scripts/run-due-review-reminders.ts
 This uses the configured `DATABASE_URL`, reads due reviews, and performs no
 notification writes or sends. An explicit dry-run works at any UTC hour. Live
 mode still skips before 16:00 UTC. GitHub Actions defaults to dry-run unless
-`NOTIFICATION_DRY_RUN=false` is explicitly set; the manual workflow at
+`NOTIFICATION_DRY_RUN=false` is explicitly set; the manual and scheduled workflow at
 `.github/workflows/review-reminders.yml` pins it to `true` and receives no
 OneSignal credentials. That workflow requires the repository `DATABASE_URL`
 secret to point to an already migrated database reachable by the runner. It
 does not apply migrations. No workflow has been dispatched as part of this
 local verification.
+
+The workflow also runs daily at **00:17 UTC** (`17 0 * * *`), provisionally for
+dry-run observation. This is outside the existing live window. Before approved
+live activation, align cron with that window (for example `17 16 * * *`). See
+[Engineer 2 handoff](../../../docs/engineer-2-handoff.md) for the full activation
+procedure, retry limits, integration contract, and device verification checklist.
+
+Focused tests that need no database or external service:
+
+```sh
+bun test scripts/review-generation.test.ts scripts/notification-safety.test.ts
+bun test scripts/review-experience.test.ts
+```
+
+The second command binds a loopback HTTP server. The generation suite mocks
+Prisma and AI; it exercises service/controller ownership, retries, schedule
+repair and unique-constraint recovery. The manual
+`bun scripts/test-review-question-route.ts` check additionally verifies the
+initial due schedule with real PostgreSQL when an isolated `TEST_DATABASE_URL`
+is supplied. It was not executed for this implementation task.

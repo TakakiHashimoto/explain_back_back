@@ -26,6 +26,14 @@ export const notifications = {
     sdk = nativeSdk;
   },
 
+  /** The installed native SDK delivers launch and running-app clicks here. */
+  onClick(listener: (event: import('react-native-onesignal').NotificationClickEvent) => void) {
+    notifications.initialize();
+    const native = sdk;
+    native?.OneSignal.Notifications.addEventListener('click', listener);
+    return () => native?.OneSignal.Notifications.removeEventListener('click', listener);
+  },
+
   /** True when this device receives pushes: OS permission granted and not opted out. */
   async isOptedIn(): Promise<boolean> {
     return (await sdk?.OneSignal.User.pushSubscription.getOptedInAsync()) ?? false;

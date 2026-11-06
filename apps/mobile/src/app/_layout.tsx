@@ -4,12 +4,12 @@ import { ClerkProvider, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
-import { notifications } from '@/features/notifications/onesignal';
 import { colors } from '@/styles/tokens';
 import { apiFetch } from '@/lib/api-fetch';
 import { purchases } from '@/features/purchases/revenuecat';
 
 import { NotificationIdentityBridge } from '@/features/notifications/NotificationIdentityBridge';
+import { NotificationNavigationBridge } from '@/features/notifications/NotificationNavigationBridge';
 // Navigator containers and screens without `app-shell` use the theme background; match the design token.
 const LightTheme = {
   ...DefaultTheme,
@@ -55,10 +55,9 @@ function RootNavigator() {
 
 /** Renders nested routes with Clerk authentication, token caching, and the light theme. */
 export default function RootLayout() {
-  useEffect(() => notifications.initialize(), []);
-
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <NotificationNavigationBridge />
       <NotificationIdentityBridge />
       <ThemeProvider value={LightTheme}>
         <RootNavigator />

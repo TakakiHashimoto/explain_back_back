@@ -17,6 +17,16 @@ afterEach(() => {
 });
 
 describe("notification error safety", () => {
+  test("reminder payload carries a fixed review type and targets the internal user", async () => {
+    process.env.ONESIGNAL_APP_ID = "test-app";
+    process.env.ONESIGNAL_REST_API_KEY = "test-key";
+    const send = spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ id: "test-send" }));
+    await sendReviewReminder("internal-user-uuid", 2, "persisted-key");
+    const payload = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+    expect(payload.data).toEqual({ type: "due_review_reminder" });
+    expect(payload.include_aliases).toEqual({ external_id: ["internal-user-uuid"] });
+    expect(payload.idempotency_key).toBe("persisted-key");
+  });
   test.each([400, 401, 429, 500, 503, 599])("HTTP %i preserves only the allowlisted status", async (status) => {
     process.env.ONESIGNAL_APP_ID = "test-app";
     process.env.ONESIGNAL_REST_API_KEY = "secret-api-key";

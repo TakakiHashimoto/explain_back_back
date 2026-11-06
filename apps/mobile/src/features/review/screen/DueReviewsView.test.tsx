@@ -17,7 +17,7 @@ mock.module('@clerk/expo', () => ({ useAuth: () => auth }));
 const push = mock(() => {});
 const dismissTo = mock(() => {});
 let focusEffect: (() => (() => void) | void) | undefined;
-let routeParams: { questionId?: string | string[] } = { questionId: 'question-123' };
+let routeParams: { questionId?: string | string[]; reminder?: string } = { questionId: 'question-123' };
 mock.module('expo-router', () => ({ Redirect: 'Redirect',
   useFocusEffect: (callback: () => (() => void) | void) => { focusEffect = callback; },
   useRouter: () => ({ push, dismissTo }), useLocalSearchParams: () => routeParams,
@@ -41,8 +41,18 @@ function text(node: ReactNode): string {
 }
 
 afterEach(() => {
+  routeParams = { questionId: 'question-123' };
   auth = { isLoaded: true, isSignedIn: true, userId: 'user-a', sessionId: 'session-a', getToken: token };
   token.mockClear();
+});
+
+test('a new notification remounts the due list even if the tab is already focused', () => {
+  const before = DueReviewsScreen().key;
+  routeParams = { reminder: 'notification-1' };
+  const after = DueReviewsScreen().key;
+  expect(after).not.toBe(before);
+  routeParams = { reminder: 'notification-2' };
+  expect(DueReviewsScreen().key).not.toBe(after);
 });
 
 test('loading shows progress without reviews or action buttons', () => {

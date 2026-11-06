@@ -9,6 +9,10 @@ const requestPermission = mock(async (_fallback: boolean) => true);
 const getOptedInAsync = mock(async () => false);
 const optIn = mock(() => {});
 const optOut = mock(() => {});
+const addEventListener = mock((_event: string, _listener: unknown) => {});
+const removeEventListener = mock((_event: string, _listener: unknown) => {});
+const login = mock((_externalId: string) => {});
+const logout = mock(() => {});
 
 mock.module('react-native', () => ({ Platform: platform }));
 mock.module('expo-constants', () => ({
@@ -19,8 +23,9 @@ mock.module('react-native-onesignal', () => ({
   LogLevel: { Verbose: 6, None: 0 },
   OneSignal: {
     initialize,
+    login, logout,
     Debug: { setLogLevel: mock(() => {}) },
-    Notifications: { requestPermission },
+    Notifications: { requestPermission, addEventListener, removeEventListener },
     User: { pushSubscription: { getOptedInAsync, optIn, optOut } },
   },
 }));
@@ -31,7 +36,8 @@ let moduleId = 0;
 beforeEach(async () => {
   platform.OS = 'android';
   constants.executionEnvironment = 'bare';
-  for (const fn of [initialize, requestPermission, getOptedInAsync, optIn, optOut]) {
+  for (const fn of [initialize, requestPermission, getOptedInAsync, optIn, optOut,
+    addEventListener, removeEventListener, login, logout]) {
     fn.mockClear();
   }
   requestPermission.mockImplementation(async () => true);
@@ -85,4 +91,28 @@ test('disable opts out without touching the permission', () => {
   notifications.disable();
   expect(optOut).toHaveBeenCalledTimes(1);
   expect(requestPermission).not.toHaveBeenCalled();
+});
+
+test('click listener initializes early and removes the exact handler on cleanup', () => {
+  const listener = mock(() => {});
+  const cleanup = notifications.onClick(listener);
+  expect(initialize).toHaveBeenCalledTimes(1);
+  expect(addEventListener).toHaveBeenCalledWith('click', listener);
+  cleanup();
+  expect(removeEventListener).toHaveBeenCalledWith('click', listener);
+});
+
+test('web click subscription is a safe no-op', () => {
+  platform.OS = 'web';
+  notifications.onClick(() => {})();
+  expect(initialize).not.toHaveBeenCalled();
+  expect(addEventListener).not.toHaveBeenCalled();
+});
+
+test('login passes the backend internal UUID and logout detaches it', () => {
+  notifications.initialize();
+  notifications.login('postgres-user-uuid');
+  notifications.logout();
+  expect(login).toHaveBeenCalledWith('postgres-user-uuid');
+  expect(logout).toHaveBeenCalledTimes(1);
 });
