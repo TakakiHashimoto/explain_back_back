@@ -20,7 +20,9 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
   // The E2E runner refuses to start unless the fake evaluator is on (no OpenAI cost).
   const fake = process.env.FAKE_AI_EVALUATION === "true";
-  res.status(200).json({ status: "ok", ...(fake && { fakeAiEvaluation: true }) });
+  res
+    .status(200)
+    .json({ status: "ok", ...(fake && { fakeAiEvaluation: true }) });
 });
 // checks request cookies and headers for session tokens, then attaches an authentication object to the Express request
 app.use(clerkMiddleware());

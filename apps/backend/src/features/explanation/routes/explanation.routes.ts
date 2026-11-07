@@ -1,4 +1,9 @@
-import { Router, type NextFunction, type Request, type Response } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import multer from "multer";
 import { requireUser } from "../../../middleware/require-user.js";
 import { AppError } from "../../../lib/errors.js";
@@ -16,7 +21,8 @@ const upload = multer({
 /** Runs multer and turns its errors (too large, wrong field) into INVALID_AUDIO. */
 function uploadAudio(req: Request, res: Response, next: NextFunction) {
   upload(req, res, (err: unknown) => {
-    if (err instanceof multer.MulterError) return next(new AppError("INVALID_AUDIO"));
+    if (err instanceof multer.MulterError)
+      return next(new AppError("INVALID_AUDIO"));
     next(err);
   });
 }

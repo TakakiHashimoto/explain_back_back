@@ -1,4 +1,7 @@
-import { Prisma, type ReviewQuestion } from "../../../generated/prisma/client.js";
+import {
+  Prisma,
+  type ReviewQuestion,
+} from "../../../generated/prisma/client.js";
 import { AppError } from "../../../lib/errors.js";
 import { prisma } from "../../../lib/prisma.js";
 import { generateQuestion } from "../generation/generateReviewQuestion.js";
@@ -13,7 +16,8 @@ export async function ensureReviewQuestion(userId: string, gapId: string) {
 
   const where = { id: gapId, explanation: { userId } };
   const gap = await prisma.knowledgeGap.findFirst({
-    where, include: { reviewQuestion: true },
+    where,
+    include: { reviewQuestion: true },
   });
   if (!gap) throw new AppError("NOT_FOUND");
 
@@ -23,13 +27,24 @@ export async function ensureReviewQuestion(userId: string, gapId: string) {
       await prisma.reviewSchedule.upsert({
         where: { questionId: question.id },
         update: {},
-        create: { questionId: question.id, intervalDays: 1, nextReviewAt: new Date() },
+        create: {
+          questionId: question.id,
+          intervalDays: 1,
+          nextReviewAt: new Date(),
+        },
       });
     } catch (error) {
       // Some Prisma upsert shapes use a read followed by an insert. If another
       // generator/answer wins that race, preserve its schedule unchanged.
-      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
-        && await prisma.reviewSchedule.findUnique({ where: { questionId: question.id } }))) {
+      if (
+        !(
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002" &&
+          (await prisma.reviewSchedule.findUnique({
+            where: { questionId: question.id },
+          }))
+        )
+      ) {
         throw error;
       }
     }
@@ -44,17 +59,22 @@ export async function ensureReviewQuestion(userId: string, gapId: string) {
     // never reaches this write, so the persisted gap can be retried unchanged.
     const saved = await prisma.reviewQuestion.create({
       data: {
-        gapId, question,
+        gapId,
+        question,
         schedule: { create: { intervalDays: 1, nextReviewAt: new Date() } },
       },
     });
     return { question: saved, created: true };
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       // gapId is unique: concurrent generators may spend two AI calls, but only
       // one question/schedule survives. Recheck ownership before returning it.
       const winner = await prisma.knowledgeGap.findFirst({
-        where, include: { reviewQuestion: true },
+        where,
+        include: { reviewQuestion: true },
       });
       if (winner?.reviewQuestion) return reuse(winner.reviewQuestion);
     }
