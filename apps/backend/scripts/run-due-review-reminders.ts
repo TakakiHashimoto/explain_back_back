@@ -2,6 +2,8 @@ import "dotenv/config";
 import type { sendDueReviewReminders } from "../src/features/review/notifications/sendDueReviewReminders.js";
 import { getSafeErrorMessage } from "../src/lib/getSafeErrorMsg.js";
 
+export const LIVE_REMINDER_START_HOUR_UTC = 11; // 20:00 JST; cron starts at 20:17 JST.
+
 // Inject only the job boundaries so the CLI's window and error handling can be tested.
 export async function runReminderJob(
   dependencies: {
@@ -18,8 +20,8 @@ export async function runReminderJob(
     const dryRun = env.NOTIFICATION_DRY_RUN === "true" ||
       (env.GITHUB_ACTIONS === "true" && env.NOTIFICATION_DRY_RUN !== "false");
 
-    // Only dry-run may bypass the daily 16:00 UTC sending window.
-    if (!dryRun && now.getUTCHours() < 16) {
+    // Only dry-run may bypass the daily 11:00 UTC sending window.
+    if (!dryRun && now.getUTCHours() < LIVE_REMINDER_START_HOUR_UTC) {
       console.log("Before daily UTC reminder window; skipping");
     } else {
       const summary = await dependencies.run(now, { dryRun });

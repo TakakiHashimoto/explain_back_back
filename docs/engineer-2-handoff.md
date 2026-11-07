@@ -1,22 +1,23 @@
 # Engineer 2 — Review & Retention handoff
 
-Status: **COMPLETE EXCEPT FOR EXTERNAL INTEGRATION** for the requested Engineer 2
-scope. Implementation and focused local checks are complete. End-to-end product
-completion still requires Engineer 1's post-persistence call, a native Android
-test, and approved deployment/notification activation. No live sends, database
-operations, migrations, repository setting changes, commits or pushes were
-performed during this task. Existing `docs/qa-evidence/` was preserved.
+Status (local integration update): **BACKEND FLOW CONNECTED; DEVICE / LIVE SERVICE
+VALIDATION PENDING**. The explanation endpoint now runs transcription, structured
+analysis, atomic Explanation/KnowledgeGap persistence, and post-commit question
+generation. Mobile recording and analysis feedback were added. The exact
+GitHub branch may not contain these uncommitted local changes. No live sends,
+production database operations, migrations, commits or pushes were performed.
+Existing `docs/qa-evidence/` was preserved.
 
 ## Findings and decisions
 
 | Component | Initial state | Result |
 | --- | --- | --- |
-| GitHub workflow | Manual only; dry-run pinned; shared concurrency already present | Added provisional daily `17 0 * * *`; kept manual trigger and all safety settings |
+| GitHub workflow | Manual only; dry-run pinned; shared concurrency already present | Daily `17 11 * * *` for the Japan-first MVP (20:17 JST); manual trigger and all safety settings kept |
 | Production question endpoint | Already mounted at `POST /api/v1/knowledge-gaps/:gapId/review-questions`, with `requireUser` | Reused; not restricted to development |
 | Question generation | Ownership and unique-gap recovery embedded in controller | Extracted `ensureReviewQuestion(userId, gapId)` for production callers |
 | First review discovery | New questions had no schedule; due API reads schedules only | Question and immediately due schedule now created atomically |
 | Existing questions | Could exist without schedules | Calling the service repairs missing schedule; preserves existing schedule |
-| Engineer 1 persistence | No production explanation-analysis/gap-persistence implementation found in `src` | Exact service boundary below; no speculative analysis endpoint |
+| Engineer 1 persistence | Transcription-only implementation was on `dev` | Imported recording/transcription, added structured analysis and atomic gap persistence; wired post-commit generation |
 | Answer/evaluation/history | Authenticated routes, usage reservation, validation, transaction, score-based schedule present | Preserved; existing HTTP regressions passed |
 | Repeat reviews | Focus refresh and `nextReviewAt <= now` selection present | Preserved; first schedule now makes questions discoverable |
 | Worker | Due selection, internal UUID targeting, UTC daily key, claims, leases, retries and sanitization present | Preserved |
@@ -27,24 +28,30 @@ performed during this task. Existing `docs/qa-evidence/` was preserved.
 
 ## Engineer 1 integration contract
 
-After the transaction that persists the Explanation and its integer-severity
-KnowledgeGap rows **commits**, invoke the Engineer 2 service for each persisted
-gap, using the authenticated internal PostgreSQL `User.id`:
+The authenticated `POST /api/v1/explanations` endpoint accepts a `multipart/form-data`
+body containing `topic` and an m4a `audio` file. It validates the upload and
+duration, reserves usage, transcribes, analyzes, then atomically saves an
+Explanation and its integer-severity KnowledgeGap rows with usage completion.
+**After the transaction commits**, the controller invokes the Engineer 2
+service for each persisted gap, using the internal PostgreSQL `User.id`:
 
 ```ts
 import { ensureReviewQuestion } from "../review/services/ensureReviewQuestion.js";
 
-// userId is derived from requireUser/authenticated server context.
-// persistedGapIds come from your committed persistence result.
+// userId is req.user.id from requireUser, never the Clerk subject.
+// persistedGapIds come from the committed explanation.knowledgeGaps result.
 for (const gapId of persistedGapIds) {
-  await ensureReviewQuestion(userId, gapId);
+  try {
+    await ensureReviewQuestion(userId, gapId);
+  } catch {
+    failedGapIds.push(gapId); // Return to the mobile client for safe retry.
+  }
 }
 ```
 
 The import is relative to the caller; adjust its path, not the service contract.
-This example specifies no explanation-analysis request/response JSON shape.
-Engineer 1 must supply the committed gap IDs and authenticated internal user ID,
-and decide how its existing flow surfaces generation failures and retries.
+The actual schema and response shape are documented in
+[`engineer-1-integration.md`](./engineer-1-integration.md).
 Do not call this inside a transaction holding uncommitted gaps: the service reads
 through the normal Prisma client and makes an external AI request.
 
@@ -74,16 +81,17 @@ Behavior:
    write. A retry is safe. Successful earlier gaps in a batch remain usable;
    the caller must retain failed gap IDs for retry. No queue was introduced.
 
-The service and endpoint are ready now. Automatic generation on explanation
-completion is **not wired**, because the owning implementation/contract is
-absent. Existing orphaned questions are repaired on service invocation; no
-bulk production backfill was executed.
+Automatic generation is wired in `createExplanation.controller.ts`. Each
+question failure is isolated, and its `gapId` is returned as a retry candidate.
+The mobile client retries using the existing authenticated POST question route.
+Existing orphaned questions are repaired on service invocation; no bulk
+production backfill was executed.
 
 ## Runtime call flows
 
 ### KnowledgeGap → question → first due review
 
-`Engineer 1 post-commit caller` (pending integration) OR
+`createExplanation` post-commit caller OR
 `POST /api/v1/knowledge-gaps/:gapId/review-questions`
 → `requireUser` → `generateReviewQuestion` controller
 → `ensureReviewQuestion` → owned gap lookup → `generateQuestion`
@@ -178,11 +186,11 @@ Profile reminder switch, not at launch.
 
 ## Automatic schedule and activation guide
 
-Current: daily **00:17 UTC**, `17 0 * * *`, a provisional operational choice
-from the task brief. No local timezone/DST adjustment is applied. Reminder
-deduplication also uses UTC dates. The worker retains its existing live guard:
-**before 16:00 UTC it skips live processing**. Therefore changing only the
-dry-run flag on this cron would normally send nothing.
+Current: daily **11:17 UTC / 20:17 JST**, `17 11 * * *`, the approved
+Japan-first MVP schedule. No per-user local timezone adjustment is applied;
+the reminder date/deduplication still use UTC. The worker's live guard starts
+at **11:00 UTC**, permitting a scheduled run that is delayed. Dry-run remains
+mandatory until native verification and explicit production-send approval.
 
 GitHub schedules run from the default branch and can be delayed or dropped;
 they are not precise timers. Review source: [GitHub schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
@@ -209,10 +217,9 @@ none were performed here:
    account switching, and refresh while Reviews is already open. Verify an
    unrelated notification does not route. A force-stopped Android app is a
    separate OS condition from an ordinary terminated app; record it separately.
-5. Choose/approve the live UTC schedule. To retain the current worker window,
-   change cron to `17 16 * * *` (daily 16:17 UTC), or another approved time at or
-   after 16:00 UTC. Keep existing concurrency and claim logic. Do not remove the
-   guard merely to make the provisional 00:17 cron send.
+5. Confirm the Japan-first 20:17 JST schedule and the aligned 11:00 UTC worker
+   guard are still appropriate for the release audience. Keep concurrency,
+   deduplication and the worker guard. GitHub schedules are not precise timers.
 6. Add/confirm Actions secrets `ONESIGNAL_APP_ID` and `ONESIGNAL_REST_API_KEY`.
    In the **Run notification worker** step, explicitly set:
 
@@ -291,9 +298,9 @@ on reuse, but was not run. No real PostgreSQL concurrency test, OpenAI generatio
 Clerk exchange, OneSignal send, Android build/device test, or GitHub dispatch was
 performed. No database was read, changed, reset or migrated during this task.
 
-Additional product observations outside this contract: the Profile reminder-time
-picker is local UI state and does not persist or control worker timing; there is
-no agreed per-user timezone/time preference API. The history API exists, while
+The Profile reminder-time picker was removed for the shared-time MVP; the screen
+now describes the daily 20:17 JST schedule. Per-user timezone/time preference
+remains unimplemented. The history API exists, while
 the requested mobile milestone is the due-question-answer-feedback flow. These
 should not be advertised as completed personalized scheduling/history UI.
 

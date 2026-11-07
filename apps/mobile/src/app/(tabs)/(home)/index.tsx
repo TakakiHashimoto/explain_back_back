@@ -5,6 +5,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { UsageSummaryCard } from '@/features/usage/components/UsageSummaryCard';
+import { StartExplainingCard } from '@/features/explanation/components/StartExplainingCard';
 import { apiFetch } from '@/lib/api-fetch';
 import { AppHeader } from '@/components/app-header';
 import { TAB_BAR_HEIGHT } from '@/components/app-tab-bar';
@@ -52,7 +53,7 @@ export default function HomeScreen() {
           </Text>
           <Text className="display-lg-mobile">What did you learn today?</Text>
         </View>
-        <Text className="h-[100px] card">Dummy</Text>
+        <StartExplainingCard />
         <Text className="h-[100px] card">Dummy</Text>
         <UsageSummaryCard />
         <Text className="h-[500px] card">Dummy</Text>

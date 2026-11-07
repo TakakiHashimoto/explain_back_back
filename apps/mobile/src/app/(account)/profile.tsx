@@ -1,11 +1,9 @@
 import { useAuth, useClerk, useUser } from '@clerk/expo';
-import DateTimePicker from '@expo/ui/community/datetime-picker';
 import Constants from 'expo-constants';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   Switch,
@@ -167,13 +165,10 @@ function ProfileUsageCard({ isPro, usage, now }: ProfileUsageCardProps) {
   );
 }
 
-/** Review reminders switch (push opt-in on this device) and the reminder time. */
+/** Review reminders switch (push opt-in on this device); MVP timing is shared. */
 function ReminderSection() {
   // Mirrors this device's push opt-in; turning it on is where we ask for notification permission.
   const [remindersOn, setRemindersOn] = useState(false);
-  // Only the hour and minute are used; the date part is ignored.
-  const [reminderTime, setReminderTime] = useState(() => new Date(2000, 0, 1, 20, 0));
-  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -216,28 +211,8 @@ function ReminderSection() {
             thumbColor={colors.surface}
           />
         </View>
-        <SettingsRow
-          testID="profile-reminder-time"
-          label="Reminder time"
-          value={reminderTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-          onPress={() => setIsTimePickerOpen((open) => !open)}
-        />
-        {/* Android opens a dialog on mount and expects us to unmount it on confirm/cancel.
-            iOS renders it inline below the row (and fires on every wheel change), so it stays
-            open until the row is tapped again. Web renders nothing. */}
-        {isTimePickerOpen && (
-          <DateTimePicker
-            mode="time"
-            value={reminderTime}
-            accentColor={colors.primary}
-            onValueChange={(_event, date) => {
-              setReminderTime(date);
-              if (Platform.OS === 'android') setIsTimePickerOpen(false);
-            }}
-            onDismiss={() => setIsTimePickerOpen(false)}
-          />
-        )}
       </View>
+      <Text className="text-muted body-sm">Daily around 20:17 Japan time (JST).</Text>
     </View>
   );
 }

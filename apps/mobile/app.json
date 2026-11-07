@@ -36,6 +36,12 @@
       ],
       "expo-router",
       [
+        "expo-audio",
+        {
+          "microphonePermission": "Explain It Back records your voice so it can analyze your explanation."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#F8F5EE",

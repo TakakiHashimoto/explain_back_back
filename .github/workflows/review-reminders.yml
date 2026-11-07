@@ -2,11 +2,11 @@ name: Due Review Reminders
 
 on:
   workflow_dispatch:
-  # Provisional daily dry-run, UTC (not a precise timer).
-  # Live activation must also align this with the worker's >=16:00 UTC window.
+  # Japan-first MVP: 20:17 JST = 11:17 UTC, subject to Actions scheduling delay.
+  # Sending remains disabled until native verification and explicit approval.
   # See docs/engineer-2-handoff.md.
   schedule:
-    - cron: "17 0 * * *"
+    - cron: "17 11 * * *"
 
 permissions:
   contents: read
