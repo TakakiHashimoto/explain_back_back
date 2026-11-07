@@ -2,6 +2,11 @@ name: Due Review Reminders
 
 on:
   workflow_dispatch:
+  # Japan-first MVP: 20:17 JST = 11:17 UTC, subject to Actions scheduling delay.
+  # Sending remains disabled until native verification and explicit approval.
+  # See docs/engineer-2-handoff.md.
+  schedule:
+    - cron: "17 11 * * *"
 
 permissions:
   contents: read

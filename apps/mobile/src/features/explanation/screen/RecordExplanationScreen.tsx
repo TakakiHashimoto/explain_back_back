@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '@/components/icon';
 import { ApiError } from '@/lib/api-fetch';
 import { colors } from '@/styles/tokens';
-import { uploadExplanation } from '../api/api.explanation';
+import { retryReviewQuestionGeneration, uploadExplanation } from '../api/api.explanation';
 import {
   MAX_RECORDING_SEC,
   MIN_RECORDING_SEC,
@@ -82,6 +82,7 @@ export default function RecordExplanationScreen() {
   const { getToken } = useAuth();
   const [topic, setTopic] = useState('');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  const [retryingQuestions, setRetryingQuestions] = useState(false);
   // Guards against double taps sending the same recording twice (spec §59.11)
   const uploadingRef = useRef(false);
   const startedAtRef = useRef(0);
@@ -123,7 +124,10 @@ export default function RecordExplanationScreen() {
     uploadingRef.current = true;
     setPhase({ kind: 'uploading', uri, seconds });
     try {
-      const explanation = await uploadExplanation(getToken, { recordingUri: uri, topic: topic.trim() });
+      const explanation = await uploadExplanation(getToken, {
+        recordingUri: uri,
+        topic: topic.trim(),
+      });
       setPhase({ kind: 'done', explanation });
     } catch (error) {
       setPhase({ kind: 'failed', uri, seconds, message: uploadErrorMessage(error) });
@@ -132,9 +136,40 @@ export default function RecordExplanationScreen() {
     }
   };
 
+  const retryFailedQuestions = async (explanation: Explanation) => {
+    if (retryingQuestions) return;
+    setRetryingQuestions(true);
+    const failedGapIds: string[] = [];
+    let recovered = 0;
+    for (const gapId of explanation.reviewGeneration.failedGapIds) {
+      try {
+        await retryReviewQuestionGeneration(getToken, gapId);
+        recovered++;
+      } catch {
+        failedGapIds.push(gapId);
+      }
+    }
+    setPhase((prev) =>
+      prev.kind === 'done' && prev.explanation.id === explanation.id
+        ? {
+            kind: 'done',
+            explanation: {
+              ...prev.explanation,
+              reviewGeneration: {
+                generatedCount: prev.explanation.reviewGeneration.generatedCount + recovered,
+                failedGapIds,
+              },
+            },
+          }
+        : prev,
+    );
+    setRetryingQuestions(false);
+  };
+
   const topicReady = topic.trim().length > 0;
   const isRecording = phase.kind === 'recording';
-  const canRecord = topicReady && (phase.kind === 'idle' || phase.kind === 'recorded' || phase.kind === 'failed');
+  const canRecord =
+    topicReady && (phase.kind === 'idle' || phase.kind === 'recorded' || phase.kind === 'failed');
 
   return (
     <StyledSafeAreaView className="app-shell" edges={['top', 'left', 'right', 'bottom']}>
@@ -174,6 +209,63 @@ export default function RecordExplanationScreen() {
               <Text className="text-muted uppercase label-sm">What you said</Text>
               <Text className="body-md">{phase.explanation.transcript}</Text>
             </View>
+            <View className="gap-sm card">
+              <Text className="headline-sm">Your explanation analysis</Text>
+              <Text className="body-md">
+                Overall understanding: {phase.explanation.analysis.scores.overall}/100
+              </Text>
+              <Text className="text-muted body-sm">
+                Accuracy {phase.explanation.analysis.scores.accuracy} · Clarity{' '}
+                {phase.explanation.analysis.scores.clarity} · Completeness{' '}
+                {phase.explanation.analysis.scores.completeness}
+              </Text>
+              {phase.explanation.analysis.strengths.map((strength, index) => (
+                <View key={`strength-${index}`} className="gap-xs">
+                  <Text className="font-semibold body-md">✓ {strength.concept}</Text>
+                  <Text className="body-md">{strength.explanation}</Text>
+                </View>
+              ))}
+            </View>
+            <View className="gap-sm card">
+              <Text className="headline-sm">Knowledge gaps</Text>
+              {phase.explanation.knowledgeGaps.length === 0 && (
+                <Text className="text-muted body-md">
+                  No specific gaps were found in this explanation.
+                </Text>
+              )}
+              {phase.explanation.knowledgeGaps.map((gap) => (
+                <View key={gap.id} className="gap-xs">
+                  <Text className="font-semibold body-md">{gap.concept}</Text>
+                  <Text className="body-md">{gap.misconception}</Text>
+                </View>
+              ))}
+              {phase.explanation.reviewGeneration.failedGapIds.length > 0 && (
+                <>
+                  <Text className="text-muted body-sm">
+                    Some review questions could not be generated. Your analysis was saved.
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    className="btn-secondary"
+                    disabled={retryingQuestions}
+                    onPress={() => retryFailedQuestions(phase.explanation)}
+                  >
+                    <Text className="btn-secondary-text">
+                      {retryingQuestions ? 'Retrying...' : 'Retry review question generation'}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+            {phase.explanation.reviewGeneration.generatedCount > 0 && (
+              <Pressable
+                className="btn-primary"
+                accessibilityRole="button"
+                onPress={() => router.push('/(tabs)/reviews')}
+              >
+                <Text className="btn-primary-text">Review my knowledge gaps</Text>
+              </Pressable>
+            )}
             <Pressable
               className="btn-secondary"
               accessibilityRole="button"
@@ -209,7 +301,9 @@ export default function RecordExplanationScreen() {
               <Text className="text-center chip-danger-text body-md">{phase.message}</Text>
             )}
 
-            {(phase.kind === 'recorded' || phase.kind === 'uploading' || phase.kind === 'failed') && (
+            {(phase.kind === 'recorded' ||
+              phase.kind === 'uploading' ||
+              phase.kind === 'failed') && (
               <Pressable
                 className="w-full btn-primary"
                 accessibilityRole="button"

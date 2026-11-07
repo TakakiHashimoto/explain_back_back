@@ -1,10 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
-import { Prisma } from "../../../generated/prisma/client.js";
-import { prisma } from "../../../lib/prisma.js";
-import { generateQuestion } from "../generation/generateReviewQuestion.js";
+import { AppError } from "../../../lib/errors.js";
+import { ensureReviewQuestion } from "../services/ensureReviewQuestion.js";
 
-// This is the controller for having AI generate review qeustion based on the user's gap
-// gap id is sent from frontend
+// Preserve the existing HTTP contract while sharing generation with server callers.
 export async function generateReviewQuestion(
   req: Request,
   res: Response,
@@ -20,43 +18,12 @@ export async function generateReviewQuestion(
   }
 
   try {
-    const foundGap = await prisma.knowledgeGap.findFirst({
-      where: { id: gapId, explanation: { userId: req.user.id } },
-      include: { reviewQuestion: true },
-    });
-    if (!foundGap) {
+    const result = await ensureReviewQuestion(req.user.id, gapId);
+    return res.status(result.created ? 201 : 200).json({ data: result.question });
+  } catch (error) {
+    if (error instanceof AppError && error.code === "NOT_FOUND") {
       return res.status(404).json({ error: "Knowledge gap was not found" });
     }
-
-    if (foundGap.reviewQuestion) {
-      return res.status(200).json({ data: foundGap.reviewQuestion });
-    }
-
-    const question = await generateQuestion(foundGap);
-
-    try {
-      const reviewQ = await prisma.reviewQuestion.create({
-        data: { gapId, question },
-      });
-
-      return res.status(201).json({ data: reviewQ });
-    } catch (error) {
-      // A concurrent request may have created the question after our lookup.
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        const existingQuestion = await prisma.reviewQuestion.findUnique({
-          where: { gapId },
-        });
-        if (existingQuestion) {
-          return res.status(200).json({ data: existingQuestion });
-        }
-      }
-
-      throw error;
-    }
-  } catch (error) {
     next(error);
   }
 }

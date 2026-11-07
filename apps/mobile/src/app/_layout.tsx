@@ -9,6 +9,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { purchases } from '@/features/purchases/revenuecat';
 
 import { NotificationIdentityBridge } from '@/features/notifications/NotificationIdentityBridge';
+import { NotificationNavigationBridge } from '@/features/notifications/NotificationNavigationBridge';
 // Navigator containers and screens without `app-shell` use the theme background; match the design token.
 const LightTheme = {
   ...DefaultTheme,
@@ -61,6 +62,7 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <NotificationNavigationBridge />
       <NotificationIdentityBridge />
       <ThemeProvider value={LightTheme}>
         <RootNavigator />

@@ -38,7 +38,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Explain It Back records your voice so it can understand your explanation."
+          "microphonePermission": "Explain It Back records your voice so it can analyze your explanation."
         }
       ],
       [

@@ -17,6 +17,16 @@ afterEach(() => {
 });
 
 describe("notification error safety", () => {
+  test("reminder payload carries a fixed review type and targets the internal user", async () => {
+    process.env.ONESIGNAL_APP_ID = "test-app";
+    process.env.ONESIGNAL_REST_API_KEY = "test-key";
+    const send = spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ id: "test-send" }));
+    await sendReviewReminder("internal-user-uuid", 2, "persisted-key");
+    const payload = JSON.parse(String(send.mock.calls[0]?.[1]?.body));
+    expect(payload.data).toEqual({ type: "due_review_reminder" });
+    expect(payload.include_aliases).toEqual({ external_id: ["internal-user-uuid"] });
+    expect(payload.idempotency_key).toBe("persisted-key");
+  });
   test.each([400, 401, 429, 500, 503, 599])("HTTP %i preserves only the allowlisted status", async (status) => {
     process.env.ONESIGNAL_APP_ID = "test-app";
     process.env.ONESIGNAL_REST_API_KEY = "secret-api-key";
@@ -66,7 +76,7 @@ describe("scheduler", () => {
     };
   }
 
-  test("explicit dry-run checks the database before 16:00 UTC", async () => {
+  test("explicit dry-run checks the database before 11:00 UTC", async () => {
     const deps = dependencies();
     const now = new Date("2026-10-27T03:00:00Z");
     expect(await runReminderJob(deps, { now, env: { NOTIFICATION_DRY_RUN: "true" } })).toBe(0);
@@ -77,22 +87,22 @@ describe("scheduler", () => {
   test.each([undefined, "false", "TRUE", "1"])("live mode never bypasses the window with flag %s", async (flag) => {
     const deps = dependencies();
     expect(await runReminderJob(deps, {
-      now: new Date("2026-10-27T15:59:59Z"), env: { NOTIFICATION_DRY_RUN: flag },
+      now: new Date("2026-10-27T10:59:59Z"), env: { NOTIFICATION_DRY_RUN: flag },
     })).toBe(0);
     expect(deps.run).not.toHaveBeenCalled();
     expect(deps.disconnect).toHaveBeenCalledTimes(1);
   });
 
-  test("live mode is allowed exactly at 16:00 UTC", async () => {
+  test("live mode is allowed exactly at 11:00 UTC", async () => {
     const deps = dependencies();
-    const now = new Date("2026-10-27T16:00:00Z");
+    const now = new Date("2026-10-27T11:00:00Z");
     expect(await runReminderJob(deps, { now, env: { NOTIFICATION_DRY_RUN: "false" } })).toBe(0);
     expect(deps.run).toHaveBeenCalledWith(now, { dryRun: false });
   });
 
   test.each([undefined, "true", "invalid"])("GitHub Actions defaults to dry-run with flag %s", async (flag) => {
     const deps = dependencies();
-    const now = new Date("2026-10-27T16:00:00Z");
+    const now = new Date("2026-10-27T11:00:00Z");
     expect(await runReminderJob(deps, { now, env: { GITHUB_ACTIONS: "true", NOTIFICATION_DRY_RUN: flag } })).toBe(0);
     expect(deps.run).toHaveBeenCalledWith(now, { dryRun: true });
   });

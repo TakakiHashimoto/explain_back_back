@@ -1,5 +1,17 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import express, { type NextFunction, type Request, type Response } from "express";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  test,
+} from "bun:test";
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import type { Server } from "node:http";
 
 // No database, Clerk or OpenAI: every dependency with side effects is replaced.
@@ -8,6 +20,11 @@ let usageEvents: string[] = [];
 let savedRows: unknown[] = [];
 let openaiCalls = 0;
 let limitReached = false;
+let analyzeFails = false;
+let failedQuestionFor: string | null = null;
+let committed = false;
+let questionCalls: string[] = [];
+let gapCount = 1;
 
 mock.module("../src/middleware/require-user.js", () => ({
   requireUser: (req: Request, _res: Response, next: NextFunction) => {
@@ -34,15 +51,68 @@ const fakeTx = {
   explanation: {
     create: async ({ data }: { data: Record<string, unknown> }) => {
       savedRows.push(data);
-      return { id: "explanation-1", createdAt: new Date(0), ...data };
+      const relation = data.knowledgeGaps as {
+        create: { concept: string; misconception: string; severity: number }[];
+      };
+      return {
+        id: "explanation-1",
+        createdAt: new Date(0),
+        ...data,
+        knowledgeGaps: relation.create.map((gap, i) => ({
+          id: `gap-${i + 1}`,
+          ...gap,
+        })),
+      };
     },
   },
 };
 mock.module("../src/lib/prisma.js", () => ({
-  prisma: { $transaction: async (fn: (tx: typeof fakeTx) => unknown) => fn(fakeTx) },
+  prisma: {
+    $transaction: async (fn: (tx: typeof fakeTx) => unknown) => {
+      const result = await fn(fakeTx);
+      committed = true;
+      return result;
+    },
+  },
 }));
 
-let openaiImpl: () => Promise<{ text: string }> = async () => ({ text: "real transcript" });
+mock.module(
+  "../src/features/explanation/analysis/analyzeExplanation.js",
+  () => ({
+    analyzeExplanation: async () => {
+      if (analyzeFails) throw new Error("Analysis provider unavailable");
+      return {
+        strengths: [
+          {
+            concept: "effects",
+            explanation: "Described the execution of effects",
+          },
+        ],
+        gaps: Array.from({ length: gapCount }, (_, i) => ({
+          concept: `missing concept ${i + 1}`,
+          misconception: "Did not explain the mechanism",
+          severity: 2,
+        })),
+        scores: { accuracy: 80, clarity: 75, completeness: 60, overall: 72 },
+      };
+    },
+  }),
+);
+
+mock.module("../src/features/review/services/ensureReviewQuestion.js", () => ({
+  ensureReviewQuestion: async (_userId: string, gapId: string) => {
+    if (!committed)
+      throw new Error("Question generation was invoked before commit");
+    questionCalls.push(gapId);
+    if (failedQuestionFor === gapId)
+      throw new Error("Question provider unavailable");
+    return { question: { id: `question-for-${gapId}` }, created: true };
+  },
+}));
+
+let openaiImpl: () => Promise<{ text: string }> = async () => ({
+  text: "real transcript",
+});
 mock.module("../src/lib/ai/openai.js", () => ({
   openai: {
     audio: {
@@ -56,9 +126,11 @@ mock.module("../src/lib/ai/openai.js", () => ({
   },
 }));
 
-const { default: explanationRouter } = await import("../src/features/explanation/routes/explanation.routes.js");
+const { default: explanationRouter } =
+  await import("../src/features/explanation/routes/explanation.routes.js");
 const { AppError, sendError } = await import("../src/lib/errors.js");
-const { readM4aDurationSec } = await import("../src/features/explanation/audio/m4aDuration.js");
+const { readM4aDurationSec } =
+  await import("../src/features/explanation/audio/m4aDuration.js");
 
 /** Builds a minimal MP4 file: ftyp + moov/mvhd with the given duration. */
 function makeM4a(durationSec: number, version: 0 | 1 = 0): Buffer {
@@ -113,15 +185,32 @@ beforeEach(() => {
   savedRows = [];
   openaiCalls = 0;
   limitReached = false;
+  analyzeFails = false;
+  failedQuestionFor = null;
+  committed = false;
+  questionCalls = [];
+  gapCount = 1;
   openaiImpl = async () => ({ text: "real transcript" });
   delete process.env.TRANSCRIPTION_DRY_RUN;
 });
 
-function post(audio: Buffer | null, fields: Record<string, string> = { topic: "React useEffect" }, type = "audio/m4a") {
+function post(
+  audio: Buffer | null,
+  fields: Record<string, string> = { topic: "React useEffect" },
+  type = "audio/m4a",
+) {
   const form = new FormData();
   for (const [key, value] of Object.entries(fields)) form.append(key, value);
-  if (audio) form.append("audio", new Blob([new Uint8Array(audio)], { type }), "recording.m4a");
-  return fetch(`${baseUrl}/api/v1/explanations`, { method: "POST", body: form });
+  if (audio)
+    form.append(
+      "audio",
+      new Blob([new Uint8Array(audio)], { type }),
+      "recording.m4a",
+    );
+  return fetch(`${baseUrl}/api/v1/explanations`, {
+    method: "POST",
+    body: form,
+  });
 }
 
 describe("readM4aDurationSec", () => {
@@ -131,7 +220,9 @@ describe("readM4aDurationSec", () => {
   });
 
   test("returns null for non-MP4 data", () => {
-    expect(readM4aDurationSec(Buffer.from("not an audio file at all"))).toBeNull();
+    expect(
+      readM4aDurationSec(Buffer.from("not an audio file at all")),
+    ).toBeNull();
     expect(readM4aDurationSec(Buffer.alloc(0))).toBeNull();
   });
 });
@@ -147,6 +238,13 @@ describe("POST /api/v1/explanations", () => {
     expect(openaiCalls).toBe(0);
     expect(usageEvents).toEqual(["reserve", "succeeded"]);
     expect(savedRows).toHaveLength(1);
+    expect(body.analysis.scores.overall).toBe(72);
+    expect(body.knowledgeGaps[0].severity).toBe(2);
+    expect(body.reviewGeneration).toEqual({
+      generatedCount: 1,
+      failedGapIds: [],
+    });
+    expect(questionCalls).toEqual(["gap-1"]);
   });
 
   test("calls OpenAI only when TRANSCRIPTION_DRY_RUN is exactly false", async () => {
@@ -177,14 +275,18 @@ describe("POST /api/v1/explanations", () => {
 
   test("rejects a missing file, a wrong MIME type and a missing topic", async () => {
     expect((await post(null)).status).toBe(400);
-    expect((await post(makeM4a(30), { topic: "x" }, "image/png")).status).toBe(400);
+    expect((await post(makeM4a(30), { topic: "x" }, "image/png")).status).toBe(
+      400,
+    );
     expect((await post(makeM4a(30), {})).status).toBe(400);
     expect((await post(makeM4a(30), { topic: "   " })).status).toBe(400);
     expect(usageEvents).toEqual([]);
   });
 
   test("rejects a file over the size limit", async () => {
-    const res = await post(Buffer.concat([makeM4a(30), Buffer.alloc(11 * 1024 * 1024)]));
+    const res = await post(
+      Buffer.concat([makeM4a(30), Buffer.alloc(11 * 1024 * 1024)]),
+    );
     expect(res.status).toBe(400);
     expect(usageEvents).toEqual([]);
   });
@@ -219,5 +321,42 @@ describe("POST /api/v1/explanations", () => {
     expect(res.status).toBe(400);
     expect(usageEvents).toEqual(["reserve", "failed"]);
     expect(savedRows).toHaveLength(0);
+  });
+
+  test("analysis failure persists nothing and releases reserved usage", async () => {
+    analyzeFails = true;
+    const response = await post(makeM4a(30));
+    expect(response.status).toBe(502);
+    expect((await response.json()).error.code).toBe("ANALYSIS_FAILED");
+    expect(usageEvents).toEqual(["reserve", "failed"]);
+    expect(savedRows).toHaveLength(0);
+    expect(questionCalls).toHaveLength(0);
+  });
+
+  test("review generation failure leaves committed explanation and retryable gap", async () => {
+    failedQuestionFor = "gap-1";
+    const response = await post(makeM4a(30));
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.reviewGeneration).toEqual({
+      generatedCount: 0,
+      failedGapIds: ["gap-1"],
+    });
+    expect(committed).toBe(true);
+    expect(savedRows).toHaveLength(1);
+    expect(usageEvents).toEqual(["reserve", "succeeded"]);
+  });
+
+  test("one failing question does not block generation for subsequent gaps", async () => {
+    gapCount = 3;
+    failedQuestionFor = "gap-2";
+    const response = await post(makeM4a(30));
+    expect(response.status).toBe(201);
+    expect((await response.json()).reviewGeneration).toEqual({
+      generatedCount: 2,
+      failedGapIds: ["gap-2"],
+    });
+    expect(questionCalls).toEqual(["gap-1", "gap-2", "gap-3"]);
+    expect(usageEvents).toEqual(["reserve", "succeeded"]);
   });
 });

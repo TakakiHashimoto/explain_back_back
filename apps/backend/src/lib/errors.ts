@@ -8,7 +8,14 @@ export const ERRORS = {
   FREE_LIMIT_REACHED: { status: 429, message: "Reached free limit." },
   USAGE_LIMIT_REACHED: { status: 429, message: "Reached fair use limit." },
   INVALID_AUDIO: { status: 400, message: "Invalid audio file." },
-  TRANSCRIPTION_FAILED: { status: 502, message: "Could not transcribe the audio." },
+  TRANSCRIPTION_FAILED: {
+    status: 502,
+    message: "Could not transcribe the audio.",
+  },
+  ANALYSIS_FAILED: {
+    status: 502,
+    message: "Could not analyze the explanation.",
+  },
 } as const;
 
 export type ErrorCode = keyof typeof ERRORS;

@@ -126,6 +126,9 @@ async function main() {
       const saved = await tx.reviewQuestion.findUniqueOrThrow({ where: { gapId: gap.id } });
       assert.equal(saved.id, created.body.data.id);
       assert.equal(saved.question, question);
+      const initialSchedule = await tx.reviewSchedule.findUniqueOrThrow({ where: { questionId: saved.id } });
+      assert.ok(initialSchedule.nextReviewAt.getTime() <= Date.now());
+      assert.equal(initialSchedule.intervalDays, 1);
       console.log("PASS: fixed test question inserted into PostgreSQL -> 201");
 
       const existing = await post(gap.id, "route-test-token");
@@ -133,6 +136,7 @@ async function main() {
       assert.equal(existing.body.data.id, saved.id);
       assert.equal(generatedGaps.length, 1);
       assert.equal(await tx.reviewQuestion.count({ where: { gapId: gap.id } }), 1);
+      assert.deepEqual(await tx.reviewSchedule.findUnique({ where: { questionId: saved.id } }), initialSchedule);
       assert.equal(blockedOpenAIRequests, 0);
       console.log("PASS: existing question returned without generation or duplicate insert -> 200");
       throw rollback;

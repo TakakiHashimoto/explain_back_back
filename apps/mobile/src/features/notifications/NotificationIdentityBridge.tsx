@@ -1,10 +1,14 @@
 import { useAuth } from '@clerk/expo';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { notifications } from './onesignal';
 
 export function NotificationIdentityBridge() {
-  const { isLoaded, isSignedIn, userId, getToken } = useAuth();
+  const { isLoaded, isSignedIn, userId, sessionId, getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  // Clerk may return a new function on render; identity changes should follow
+  // the account/session, rather than repeatedly logging the same device out.
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
   // 1. Initialize the native OneSignal SDK.
   useEffect(() => {
@@ -15,9 +19,12 @@ export function NotificationIdentityBridge() {
   useEffect(() => {
     if (!isLoaded) return;
 
+    // A native identity can survive process death. Clear it before bootstrap so
+    // a failed/expired session cannot leave a previous account attached.
+    notifications.logout();
+
     // The user has signed out.
-    if (!isSignedIn || !userId) {
-      notifications.logout();
+    if (!isSignedIn || !userId || !sessionId) {
       return;
     }
 
@@ -31,7 +38,7 @@ export function NotificationIdentityBridge() {
       }
 
       // Obtain a Clerk session token.
-      const token = await getToken();
+      const token = await getTokenRef.current();
 
       if (!token) {
         throw new Error('Missing authentication token');
@@ -70,8 +77,10 @@ export function NotificationIdentityBridge() {
 
     return () => {
       controller.abort();
+      // Detach immediately, even if the next account's bootstrap later fails.
+      notifications.logout();
     };
-  }, [isLoaded, isSignedIn, userId, getToken]);
+  }, [isLoaded, isSignedIn, userId, sessionId]);
 
   return null;
 }

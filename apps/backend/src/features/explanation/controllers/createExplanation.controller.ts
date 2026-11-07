@@ -5,6 +5,8 @@ import { AppError } from "../../../lib/errors.js";
 import { completeUsage, reserveUsage } from "../../usage/usage.service.js";
 import { readM4aDurationSec } from "../audio/m4aDuration.js";
 import { transcribeAudio } from "../transcription/transcribeAudio.js";
+import { analyzeExplanation } from "../analysis/analyzeExplanation.js";
+import { ensureReviewQuestion } from "../../review/services/ensureReviewQuestion.js";
 import {
   ALLOWED_AUDIO_MIME_TYPES,
   MAX_DURATION_SEC,
@@ -17,8 +19,8 @@ const bodySchema = z.object({
 });
 
 /**
- * Receives a recorded explanation, transcribes it and saves the transcript.
- * Every check runs before the paid transcription call, and a failed transcription is not counted as a use.
+ * Transcribes and analyzes a recording, atomically persists Explanation and
+ * KnowledgeGap rows, then creates initial review questions after commit.
  */
 export async function createExplanation(req: Request, res: Response) {
   // 1. Validate input first: a 400 must not consume a use
@@ -65,18 +67,76 @@ export async function createExplanation(req: Request, res: Response) {
     throw new AppError("INVALID_AUDIO");
   }
 
-  // 3. Save the transcript and count the use together; the audio buffer is discarded after this request (spec §23)
-  const explanation = await prisma.$transaction(async (tx) => {
-    const created = await tx.explanation.create({
-      data: { userId, topic, transcript },
-      select: { id: true, topic: true, transcript: true, createdAt: true },
-    });
-    await completeUsage(usageId, true, tx);
-    return created;
-  }).catch(async (err) => {
-    await completeUsage(usageId, false, prisma);
-    throw err;
-  });
+  // External AI calls belong outside transactions. Failed analysis does not
+  // create a partially completed Explanation or charge the user's usage limit.
+  const analysis = await analyzeExplanation({ topic, transcript }).catch(
+    async () => {
+      await completeUsage(usageId, false, prisma);
+      throw new AppError("ANALYSIS_FAILED");
+    },
+  );
 
-  res.status(201).json(explanation);
+  // Explanation + gaps + usage charge commit atomically. The audio buffer is
+  // discarded after the request; only text and the validated analysis persist.
+  const explanation = await prisma
+    .$transaction(async (tx) => {
+      const created = await tx.explanation.create({
+        data: {
+          userId,
+          topic,
+          transcript,
+          knowledgeGaps: {
+            create: analysis.gaps.map(
+              ({ concept, misconception, severity }) => ({
+                concept,
+                misconception,
+                severity,
+              }),
+            ),
+          },
+        },
+        select: {
+          id: true,
+          topic: true,
+          transcript: true,
+          createdAt: true,
+          knowledgeGaps: {
+            select: {
+              id: true,
+              concept: true,
+              misconception: true,
+              severity: true,
+            },
+          },
+        },
+      });
+      await completeUsage(usageId, true, tx);
+      return created;
+    })
+    .catch(async (err) => {
+      await completeUsage(usageId, false, prisma);
+      throw err;
+    });
+
+  // Committed gap IDs now exist and can be read by ensureReviewQuestion's normal
+  // Prisma client. AI failure here must not undo a successful explanation.
+  const failedGapIds: string[] = [];
+  let generatedCount = 0;
+  for (const gap of explanation.knowledgeGaps) {
+    try {
+      await ensureReviewQuestion(userId, gap.id);
+      generatedCount++;
+    } catch {
+      failedGapIds.push(gap.id);
+      console.warn("Initial review question generation failed", {
+        gapId: gap.id,
+      });
+    }
+  }
+
+  res.status(201).json({
+    ...explanation,
+    analysis,
+    reviewGeneration: { generatedCount, failedGapIds },
+  });
 }

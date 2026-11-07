@@ -35,3 +35,21 @@ export async function uploadExplanation(
   }
   return body as Explanation;
 }
+
+/** Idempotent recovery: existing questions are reused and only missing ones generated. */
+export async function retryReviewQuestionGeneration(
+  getToken: GetToken,
+  gapId: string,
+): Promise<void> {
+  const token = await getToken();
+  const res = await fetch(
+    `${process.env.EXPO_PUBLIC_API_URL}/api/v1/knowledge-gaps/${encodeURIComponent(gapId)}/review-questions`,
+    {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Review question generation failed: ${res.status}`);
+  }
+}

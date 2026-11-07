@@ -3,8 +3,9 @@ import { styled } from 'nativewind';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { StartExplainingCard } from '@/features/explanation/components/StartExplainingCard';
 import { UsageSummaryCard } from '@/features/usage/components/UsageSummaryCard';
+import { StartExplainingCard } from '@/features/explanation/components/StartExplainingCard';
+import { apiFetch } from '@/lib/api-fetch';
 import { AppHeader } from '@/components/app-header';
 import { TAB_BAR_HEIGHT } from '@/components/app-tab-bar';
 
