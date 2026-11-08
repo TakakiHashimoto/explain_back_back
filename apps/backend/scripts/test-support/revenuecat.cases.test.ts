@@ -562,6 +562,26 @@ describe("POST /api/v1/webhooks/revenuecat", () => {
     expect(revenueCatCalls).toHaveLength(0);
   });
 
+  test("one failed sync does not stop the others, and the event is retried", async () => {
+    subscriber = (userId) =>
+      userId === "user-1"
+        ? new Response("down", { status: 503 })
+        : subscriberWith({ pro: { expires_date: null } });
+    const log = spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await deliver({
+      event: {
+        type: "TRANSFER",
+        transferred_from: ["user-1"],
+        transferred_to: ["user-2"],
+      },
+    });
+
+    expect(res.status).toBe(500);
+    expect(rows.get("user-2")?.source).toBe("revenuecat");
+    log.mockRestore();
+  });
+
   test("a RevenueCat failure is non-2xx so RevenueCat retries", async () => {
     subscriber = () => new Response("down", { status: 503 });
     const log = spyOn(console, "error").mockImplementation(() => {});

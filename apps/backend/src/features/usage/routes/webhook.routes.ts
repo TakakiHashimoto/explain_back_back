@@ -73,9 +73,21 @@ router.post("/revenuecat", async (req, res) => {
       })
     : [];
 
-  // A thrown error reaches the error handler (500), and RevenueCat retries the event.
-  for (const { id } of users) {
-    await syncEntitlementFromRevenueCat(id);
+  // The syncs are independent (e.g. both sides of a TRANSFER): run them all, so one failure
+  // does not block the others. Any failure reaches the error handler (500) and RevenueCat
+  // retries the event; re-syncing the users that succeeded is harmless (idempotent).
+  const results = await Promise.allSettled(
+    users.map(({ id }) => syncEntitlementFromRevenueCat(id)),
+  );
+  const failures = results.filter((result) => result.status === "rejected");
+  if (failures.length > 0) {
+    // Our own messages only carry the HTTP status, never the key.
+    const reason = failures[0]!.reason;
+    throw new Error(
+      `RevenueCat webhook: ${failures.length} of ${users.length} syncs failed (${
+        reason instanceof Error ? reason.message : "unknown error"
+      })`,
+    );
   }
 
   res.json({ received: true });
