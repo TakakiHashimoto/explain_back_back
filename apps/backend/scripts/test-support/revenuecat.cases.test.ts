@@ -90,7 +90,7 @@ mock.module("../../src/features/usage/usage.service.js", () => ({
 const { syncEntitlementFromRevenueCat } = await import(
   "../../src/features/usage/entitlement/syncEntitlement.js"
 );
-const { default: usageRoutes } = await import(
+const { default: usageRoutes, clearRefreshCooldowns } = await import(
   "../../src/features/usage/routes/usage.routes.js"
 );
 const {
@@ -156,6 +156,7 @@ beforeEach(() => {
   userIds = new Set(["user-1", "user-2"]);
   revenueCatCalls = [];
   events = [];
+  clearRefreshCooldowns();
   subscriber = () => subscriberWith({});
   process.env.REVENUECAT_SECRET_API_KEY = "sk_test_secret";
   process.env.REVENUECAT_WEBHOOK_AUTH = "Bearer webhook-secret";
@@ -381,6 +382,31 @@ describe("POST /api/v1/me/entitlement/refresh", () => {
     });
     expect(JSON.stringify(log.mock.calls)).not.toContain("sk_test_secret");
     log.mockRestore();
+  });
+
+  test("a second refresh inside the cooldown returns the DB state without calling RevenueCat", async () => {
+    subscriber = () => subscriberWith({ pro: { expires_date: null } });
+
+    await refresh();
+    const res = await refresh();
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ isPro: true });
+    expect(revenueCatCalls).toHaveLength(1);
+  });
+
+  test("a failed refresh does not start the cooldown", async () => {
+    subscriber = () => new Response("down", { status: 500 });
+    const log = spyOn(console, "error").mockImplementation(() => {});
+    await refresh();
+    log.mockRestore();
+    subscriber = () => subscriberWith({ pro: { expires_date: null } });
+
+    const res = await refresh();
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ isPro: true });
+    expect(revenueCatCalls).toHaveLength(2);
   });
 });
 
