@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { fileURLToPath } from "node:url";
 
 // Keep Bun module mocks (fake Prisma) out of the other suites.
 test("revenuecat: isolated sync / webhook tests", async () => {
@@ -6,8 +7,10 @@ test("revenuecat: isolated sync / webhook tests", async () => {
     [
       process.execPath,
       "test",
-      new URL("./test-support/revenuecat.cases.test.ts", import.meta.url)
-        .pathname,
+      // fileURLToPath decodes %20 etc., so paths with spaces or non-ASCII characters work.
+      fileURLToPath(
+        new URL("./test-support/revenuecat.cases.test.ts", import.meta.url),
+      ),
     ],
     { stdout: "pipe", stderr: "pipe" },
   );
