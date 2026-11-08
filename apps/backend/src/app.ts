@@ -7,6 +7,7 @@ import { clerkMiddleware } from "@clerk/express";
 import authRoutes from "./features/me/routes/me.routes.js";
 import devRoutes from "./features/usage/routes/dev.routes.js";
 import usageRoutes from "./features/usage/routes/usage.routes.js";
+import webhookRoutes from "./features/usage/routes/webhook.routes.js";
 import { AppError, sendError } from "./lib/errors.js";
 import reviewRouter from "./features/review/routes/review.router.js";
 import reviewQuestionRouter from "./features/review/routes/reviewQuestion.router.js";
@@ -24,6 +25,9 @@ app.get("/health", (_req, res) => {
     .status(200)
     .json({ status: "ok", ...(fake && { fakeAiEvaluation: true }) });
 });
+// Server-to-server webhooks: authenticated by their own header, so they sit before Clerk.
+// express.json() above parses their body.
+app.use("/api/v1/webhooks", webhookRoutes);
 // checks request cookies and headers for session tokens, then attaches an authentication object to the Express request
 app.use(clerkMiddleware());
 

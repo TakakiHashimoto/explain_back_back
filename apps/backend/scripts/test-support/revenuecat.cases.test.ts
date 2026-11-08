@@ -20,9 +20,15 @@ import type { Server } from "node:http";
 // Run: bun test scripts/revenuecat.test.ts
 type Row = { userId: string; expiresAt: Date | null; source: string };
 let rows: Map<string, Row>;
+// Existing User.id values (webhook lookups).
+let userIds: Set<string>;
 
 mock.module("../../src/lib/prisma.js", () => ({
   prisma: {
+    user: {
+      findMany: async ({ where }: { where: { id: { in: string[] } } }) =>
+        where.id.in.filter((id) => userIds.has(id)).map((id) => ({ id })),
+    },
     entitlement: {
       findUnique: async ({ where }: { where: { userId: string } }) =>
         rows.get(where.userId) ?? null,
@@ -74,6 +80,11 @@ const { syncEntitlementFromRevenueCat } = await import(
 const { default: usageRoutes } = await import(
   "../../src/features/usage/routes/usage.routes.js"
 );
+const {
+  default: webhookRoutes,
+  getAppUserIds,
+  isAuthorized,
+} = await import("../../src/features/usage/routes/webhook.routes.js");
 const { AppError, sendError } = await import("../../src/lib/errors.js");
 
 let server: Server;
@@ -82,6 +93,7 @@ let baseUrl: string;
 beforeAll(async () => {
   const app = express();
   app.use(express.json());
+  app.use("/api/v1/webhooks", webhookRoutes);
   app.use("/api/v1/me", usageRoutes);
   // Same mapping as the error handler in src/app.ts
   app.use((err: unknown, _req: Req, res: Res, _next: NextFunction) => {
@@ -100,6 +112,7 @@ afterAll(() => {
 
 const realFetch = globalThis.fetch;
 const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
+const webhookAuth = process.env.REVENUECAT_WEBHOOK_AUTH;
 let revenueCatCalls: { url: string; init?: RequestInit }[];
 let subscriber: (userId: string) => Response;
 
@@ -125,9 +138,11 @@ function subscriberWith(entitlements: Record<string, unknown>) {
 
 beforeEach(() => {
   rows = new Map();
+  userIds = new Set(["user-1", "user-2"]);
   revenueCatCalls = [];
   subscriber = () => subscriberWith({});
   process.env.REVENUECAT_SECRET_API_KEY = "sk_test_secret";
+  process.env.REVENUECAT_WEBHOOK_AUTH = "Bearer webhook-secret";
   stubRevenueCat();
 });
 
@@ -135,6 +150,8 @@ afterEach(() => {
   globalThis.fetch = realFetch;
   if (apiKey === undefined) delete process.env.REVENUECAT_SECRET_API_KEY;
   else process.env.REVENUECAT_SECRET_API_KEY = apiKey;
+  if (webhookAuth === undefined) delete process.env.REVENUECAT_WEBHOOK_AUTH;
+  else process.env.REVENUECAT_WEBHOOK_AUTH = webhookAuth;
 });
 
 describe("syncEntitlementFromRevenueCat", () => {
@@ -280,6 +297,171 @@ describe("POST /api/v1/me/entitlement/refresh", () => {
       },
     });
     expect(JSON.stringify(log.mock.calls)).not.toContain("sk_test_secret");
+    log.mockRestore();
+  });
+});
+
+describe("isAuthorized", () => {
+  test("accepts only the exact configured value", () => {
+    expect(isAuthorized("Bearer webhook-secret", "Bearer webhook-secret")).toBe(
+      true,
+    );
+    expect(isAuthorized("Bearer webhook-secre", "Bearer webhook-secret")).toBe(
+      false,
+    );
+    expect(isAuthorized("bearer webhook-secret", "Bearer webhook-secret")).toBe(
+      false,
+    );
+    expect(isAuthorized("", "Bearer webhook-secret")).toBe(false);
+    expect(isAuthorized(undefined, "Bearer webhook-secret")).toBe(false);
+  });
+});
+
+describe("getAppUserIds", () => {
+  test("uses app_user_id for ordinary events", () => {
+    expect(
+      getAppUserIds({ type: "INITIAL_PURCHASE", app_user_id: "user-1" }),
+    ).toEqual(["user-1"]);
+  });
+
+  test("uses both sides of a TRANSFER, without anonymous IDs or duplicates", () => {
+    expect(
+      getAppUserIds({
+        type: "TRANSFER",
+        transferred_from: ["user-1", "$RCAnonymousID:abc"],
+        transferred_to: ["user-2", "user-1"],
+      }),
+    ).toEqual(["user-1", "user-2"]);
+  });
+
+  test("ignores anonymous IDs and malformed events", () => {
+    expect(
+      getAppUserIds({ type: "RENEWAL", app_user_id: "$RCAnonymousID:abc" }),
+    ).toEqual([]);
+    expect(getAppUserIds({ type: "RENEWAL", app_user_id: 42 })).toEqual([]);
+    expect(getAppUserIds({ type: "TRANSFER" })).toEqual([]);
+    expect(getAppUserIds(undefined)).toEqual([]);
+    expect(getAppUserIds("event")).toEqual([]);
+  });
+});
+
+describe("POST /api/v1/webhooks/revenuecat", () => {
+  function deliver(body: unknown, authorization = "Bearer webhook-secret") {
+    return fetch(`${baseUrl}/api/v1/webhooks/revenuecat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", authorization },
+      body: JSON.stringify(body),
+    });
+  }
+
+  test("a wrong Authorization header is 401 and touches nothing", async () => {
+    const res = await deliver(
+      { event: { type: "INITIAL_PURCHASE", app_user_id: "user-1" } },
+      "Bearer wrong",
+    );
+
+    expect(res.status).toBe(401);
+    expect((await res.json()).error.code).toBe("UNAUTHENTICATED");
+    expect(revenueCatCalls).toHaveLength(0);
+  });
+
+  test("an unset REVENUECAT_WEBHOOK_AUTH rejects every request", async () => {
+    delete process.env.REVENUECAT_WEBHOOK_AUTH;
+    const log = spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await deliver(
+      { event: { type: "INITIAL_PURCHASE", app_user_id: "user-1" } },
+      "",
+    );
+
+    expect(res.status).toBe(500);
+    expect(revenueCatCalls).toHaveLength(0);
+    log.mockRestore();
+  });
+
+  test("the event is only a trigger: the row follows RevenueCat, not the body", async () => {
+    subscriber = () =>
+      subscriberWith({ pro: { expires_date: "2030-01-01T00:00:00Z" } });
+
+    const res = await deliver({
+      event: {
+        type: "EXPIRATION",
+        app_user_id: "user-1",
+        expiration_at_ms: 0,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(rows.get("user-1")?.expiresAt).toEqual(
+      new Date("2030-01-01T00:00:00Z"),
+    );
+  });
+
+  test("a redelivered event gives the same result (idempotent)", async () => {
+    subscriber = () => subscriberWith({ pro: { expires_date: null } });
+    const event = { event: { type: "RENEWAL", app_user_id: "user-1" } };
+
+    await deliver(event);
+    const first = rows.get("user-1");
+    const res = await deliver(event);
+
+    expect(res.status).toBe(200);
+    expect(rows.get("user-1")).toEqual(first!);
+    expect(rows.size).toBe(1);
+  });
+
+  test("TRANSFER syncs both users, so the source loses Pro", async () => {
+    rows.set("user-1", {
+      userId: "user-1",
+      expiresAt: null,
+      source: "revenuecat",
+    });
+    subscriber = (userId) =>
+      userId === "user-2"
+        ? subscriberWith({ pro: { expires_date: null } })
+        : subscriberWith({});
+
+    const res = await deliver({
+      event: {
+        type: "TRANSFER",
+        transferred_from: ["user-1"],
+        transferred_to: ["user-2"],
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(rows.has("user-1")).toBe(false);
+    expect(rows.get("user-2")?.source).toBe("revenuecat");
+  });
+
+  test.each([
+    ["the dashboard TEST event", { event: { type: "TEST", app_user_id: "x" } }],
+    [
+      "an anonymous user",
+      {
+        event: {
+          type: "INITIAL_PURCHASE",
+          app_user_id: "$RCAnonymousID:abc",
+        },
+      },
+    ],
+    ["a body without event", { hello: "world" }],
+  ])("%s gets 200 without calling RevenueCat", async (_name, body) => {
+    const res = await deliver(body);
+
+    expect(res.status).toBe(200);
+    expect(revenueCatCalls).toHaveLength(0);
+  });
+
+  test("a RevenueCat failure is non-2xx so RevenueCat retries", async () => {
+    subscriber = () => new Response("down", { status: 503 });
+    const log = spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await deliver({
+      event: { type: "RENEWAL", app_user_id: "user-1" },
+    });
+
+    expect(res.status).toBe(500);
     log.mockRestore();
   });
 });
