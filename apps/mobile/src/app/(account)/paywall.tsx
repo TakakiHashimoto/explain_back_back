@@ -8,6 +8,7 @@ import { getEntitlement } from '@/features/usage/api/api.usage';
 import { Entitlement } from '@/features/usage/types';
 import { colors } from '@/styles/tokens';
 import { purchases } from '@/features/purchases/revenuecat';
+import { confirmPro } from '@/features/purchases/confirmPro';
 import { PurchasesPackage } from 'react-native-purchases';
 
 type PlanId = 'annual' | 'monthly';
@@ -156,15 +157,18 @@ export default function PaywallScreen() {
     setIsBusy(true);
     try {
       const result = await purchases.purchase(pkg);
-      if (result === 'purchased') {
-        Alert.alert("You're Pro now", undefined, [{ text: 'OK', onPress: () => router.back() }]);
+      if (result === 'purchased' || result === 'unverified') {
+        // Pro shows only once the backend has it; a paid purchase is still not lost (webhook).
+        if (await confirmPro(() => getTokenRef.current())) {
+          Alert.alert("You're Pro now", undefined, [{ text: 'OK', onPress: () => router.back() }]);
+        } else {
+          Alert.alert(
+            'Purchase received',
+            'Pro may take a moment to appear. If it does not, tap Restore.',
+          );
+        }
       } else if (result === 'pending') {
         Alert.alert('Purchase pending', "You'll get Pro once the payment is approved.");
-      } else if (result === 'unverified') {
-        Alert.alert(
-          'Purchase received',
-          'Pro may take a moment to appear. If it does not, tap Restore.',
-        );
       }
       // 'cancelled': show nothing.
     } catch {
@@ -180,9 +184,13 @@ export default function PaywallScreen() {
     try {
       const result = await purchases.restore();
       if (result === 'restored') {
-        Alert.alert('Purchases restored', undefined, [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        if (await confirmPro(() => getTokenRef.current())) {
+          Alert.alert('Purchases restored', "You're Pro again.", [
+            { text: 'OK', onPress: () => router.back() },
+          ]);
+        } else {
+          Alert.alert('Purchases restored', 'Pro may take a moment to appear.');
+        }
       } else {
         Alert.alert('Nothing to restore', 'No Pro purchase was found for this store account.');
       }
