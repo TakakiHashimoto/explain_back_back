@@ -5,6 +5,22 @@ import type { PurchasesError, PurchasesPackage } from 'react-native-purchases';
 const PRO_ENTITLEMENT = 'pro';
 let currentUserId: string | undefined;
 
+/** The public SDK key of this platform's store (Google Play / App Store). */
+function storeApiKey(): string {
+  if (Platform.OS === 'ios') {
+    const key = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY ?? '';
+    if (!key) console.warn('Missing EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY');
+    return key;
+  }
+  if (Platform.OS === 'android') {
+    const key = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY ?? '';
+    if (!key) console.warn('Missing EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY');
+    return key;
+  }
+  console.warn('Unexpected platform.');
+  return '';
+}
+
 export const purchases = {
   /**
    * First call configures the SDK;
@@ -15,23 +31,10 @@ export const purchases = {
   async identify(appUserId: string): Promise<void> {
     if (__DEV__) Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
 
-    let apiKey = '';
-    if (Platform.OS === 'ios') {
-      apiKey = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY ?? '';
-      if (!apiKey) {
-        console.warn('Missing EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY');
-      }
-    } else if (Platform.OS === 'android') {
-      apiKey = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY ?? '';
-      if (!apiKey) {
-        console.warn('Missing EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY');
-      }
-    } else {
-      console.warn('Unexpected platform.');
-    }
-
-    // HACK
-    apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
+    // Development only: a RevenueCat Test Store key (test_...), when set, replaces the store keys,
+    // so purchases can be tried without Google Play / App Store. Leave it unset for store builds.
+    let apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
+    if (!apiKey) apiKey = storeApiKey();
 
     if (currentUserId === undefined) {
       Purchases.configure({ apiKey, appUserID: appUserId });
@@ -94,6 +97,11 @@ export const purchases = {
    * finding nothing is a normal result, not an error.
    */
   async restore(): Promise<'restored' | 'nothing'> {
+    // Restore can be tapped before identify (e.g. /me is slow or failed). There is no user to
+    // restore to yet, so fail with a clear message instead of the SDK's own error.
+    if (!(await Purchases.isConfigured())) {
+      throw new Error('Purchases are not ready yet');
+    }
     const customerInfo = await Purchases.restorePurchases();
     return customerInfo.entitlements.active[PRO_ENTITLEMENT] ? 'restored' : 'nothing';
   },
