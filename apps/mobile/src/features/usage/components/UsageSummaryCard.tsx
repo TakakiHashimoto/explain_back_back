@@ -1,11 +1,11 @@
 import { useAuth } from '@clerk/expo';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { colors } from '@/styles/tokens';
 import { getEntitlement } from '../api/api.usage';
 import { Entitlement } from '../types';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 type State =
   | { status: 'loading' }
@@ -69,11 +69,17 @@ function UsageSummaryContent({ entitlement }: { entitlement: Entitlement }) {
         <Text className="font-sans font-bold text-[11px] text-text-muted uppercase leading-[14px] tracking-[0.9px]">
           {isPro ? 'Pro' : 'Free'} plan · this week
         </Text>
-        {/* TODO: make this a link to the paywall once the route exists (Phase 4). */}
         {!isPro && (
-          <Text className="font-sans font-semibold text-[13px] text-primary leading-[18px]">
-            Upgrade
-          </Text>
+          <Pressable
+            testID="usage-summary-upgrade"
+            accessibilityRole="link"
+            hitSlop={8}
+            onPress={() => router.push('/paywall')}
+          >
+            <Text className="font-sans font-semibold text-[13px] text-primary leading-[18px]">
+              Upgrade
+            </Text>
+          </Pressable>
         )}
       </View>
       <View className="flex-row gap-md">
