@@ -1,4 +1,20 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from "bun:test";
+import express, {
+  type NextFunction,
+  type Request as Req,
+  type Response as Res,
+} from "express";
+import type { Server } from "node:http";
 
 // No database and no RevenueCat: Prisma is an in-memory fake and fetch is stubbed.
 // Run: bun test scripts/revenuecat.test.ts
@@ -34,9 +50,53 @@ mock.module("../../src/lib/prisma.js", () => ({
   },
 }));
 
+// Signed in as "user-1" (no Clerk).
+mock.module("../../src/middleware/require-user.js", () => ({
+  requireUser: (req: Req, _res: Res, next: NextFunction) => {
+    req.user = { id: "user-1" } as Req["user"];
+    next();
+  },
+}));
+
+// getUsage reads the window from the DB; here it only reports the plan the sync left behind.
+mock.module("../../src/features/usage/usage.service.js", () => ({
+  getUsage: async (userId: string, now: Date) => {
+    const row = rows.get(userId);
+    return {
+      isPro: !!row && (row.expiresAt === null || row.expiresAt > now),
+    };
+  },
+}));
+
 const { syncEntitlementFromRevenueCat } = await import(
   "../../src/features/usage/entitlement/syncEntitlement.js"
 );
+const { default: usageRoutes } = await import(
+  "../../src/features/usage/routes/usage.routes.js"
+);
+const { AppError, sendError } = await import("../../src/lib/errors.js");
+
+let server: Server;
+let baseUrl: string;
+
+beforeAll(async () => {
+  const app = express();
+  app.use(express.json());
+  app.use("/api/v1/me", usageRoutes);
+  // Same mapping as the error handler in src/app.ts
+  app.use((err: unknown, _req: Req, res: Res, _next: NextFunction) => {
+    if (err instanceof AppError) return sendError(res, err.code);
+    sendError(res, "INTERNAL_ERROR");
+  });
+  server = app.listen(0);
+  await new Promise((r) => server.once("listening", r));
+  const address = server.address();
+  baseUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+});
+
+afterAll(() => {
+  server.close();
+});
 
 const realFetch = globalThis.fetch;
 const apiKey = process.env.REVENUECAT_SECRET_API_KEY;
@@ -184,5 +244,42 @@ describe("syncEntitlementFromRevenueCat", () => {
       "RevenueCat is not configured",
     );
     expect(revenueCatCalls).toHaveLength(0);
+  });
+});
+
+describe("POST /api/v1/me/entitlement/refresh", () => {
+  function refresh() {
+    return fetch(`${baseUrl}/api/v1/me/entitlement/refresh`, {
+      method: "POST",
+    });
+  }
+
+  test("syncs the signed-in user and returns the entitlement shape", async () => {
+    subscriber = () => subscriberWith({ pro: { expires_date: null } });
+
+    const res = await refresh();
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ isPro: true });
+    expect(revenueCatCalls.map((call) => call.url)).toEqual([
+      "https://api.revenuecat.com/v1/subscribers/user-1",
+    ]);
+  });
+
+  test("a RevenueCat failure returns 502 ENTITLEMENT_SYNC_FAILED", async () => {
+    subscriber = () => new Response("down", { status: 500 });
+    const log = spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await refresh();
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({
+      error: {
+        code: "ENTITLEMENT_SYNC_FAILED",
+        message: "Could not check your subscription.",
+      },
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("sk_test_secret");
+    log.mockRestore();
   });
 });

@@ -16,6 +16,10 @@ export const ERRORS = {
     status: 502,
     message: "Could not analyze the explanation.",
   },
+  ENTITLEMENT_SYNC_FAILED: {
+    status: 502,
+    message: "Could not check your subscription.",
+  },
 } as const;
 
 export type ErrorCode = keyof typeof ERRORS;
