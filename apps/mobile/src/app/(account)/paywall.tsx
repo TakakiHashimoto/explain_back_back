@@ -101,7 +101,8 @@ export default function PaywallScreen() {
   const { getToken } = useAuth();
   const [plan, setPlan] = useState<PlanId>('annual');
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
-  const [isPurchasing, setIsPurchasing] = useState(false);
+  // A purchase or a restore is running; both buttons are disabled meanwhile.
+  const [isBusy, setIsBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [plans, setPlans] = useState<{
     monthly: PurchasesPackage;
@@ -151,8 +152,8 @@ export default function PaywallScreen() {
 
   async function onContinue() {
     const pkg = plans?.[plan];
-    if (!pkg || isPurchasing) return;
-    setIsPurchasing(true);
+    if (!pkg || isBusy) return;
+    setIsBusy(true);
     try {
       const result = await purchases.purchase(pkg);
       if (result === 'purchased') {
@@ -169,7 +170,26 @@ export default function PaywallScreen() {
     } catch {
       Alert.alert('Purchase failed', 'Please try again.');
     } finally {
-      setIsPurchasing(false);
+      setIsBusy(false);
+    }
+  }
+
+  async function onRestore() {
+    if (isBusy) return;
+    setIsBusy(true);
+    try {
+      const result = await purchases.restore();
+      if (result === 'restored') {
+        Alert.alert('Purchases restored', undefined, [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      } else {
+        Alert.alert('Nothing to restore', 'No Pro purchase was found for this store account.');
+      }
+    } catch {
+      Alert.alert('Restore failed', 'Please try again.');
+    } finally {
+      setIsBusy(false);
     }
   }
 
@@ -185,12 +205,13 @@ export default function PaywallScreen() {
         >
           <Icon name="close" size={22} color={colors.textSecondary} />
         </Pressable>
-        {/* TODO: restore purchases via RevenueCat (Phase 4). */}
         <Pressable
           testID="paywall-restore"
           accessibilityRole="button"
-          onPress={() => {}}
+          onPress={onRestore}
           className="p-3"
+          disabled={isBusy}
+          accessibilityState={{ disabled: isBusy }}
         >
           <Text className="font-sans font-semibold text-[14px] text-primary leading-[20px]">
             Restore
@@ -269,11 +290,11 @@ export default function PaywallScreen() {
             testID="paywall-purchase"
             accessibilityRole="button"
             onPress={onContinue}
-            className={isPurchasing ? 'btn-ghost' : 'btn-primary'}
-            disabled={isPurchasing || !plans}
-            accessibilityState={{ disabled: isPurchasing || !plans }}
+            className={isBusy ? 'btn-ghost' : 'btn-primary'}
+            disabled={isBusy || !plans}
+            accessibilityState={{ disabled: isBusy || !plans }}
           >
-            <Text className={isPurchasing ? 'btn-ghost-text' : 'btn-primary-text'}>Continue</Text>
+            <Text className={isBusy ? 'btn-ghost-text' : 'btn-primary-text'}>Continue</Text>
           </Pressable>
           <Text className="text-muted text-center body-sm">
             Cancel anytime in your store settings.

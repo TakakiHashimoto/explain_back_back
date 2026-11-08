@@ -88,4 +88,13 @@ export const purchases = {
       throw e;
     }
   },
+
+  /**
+   * Restores the store account's purchases to the current user;
+   * finding nothing is a normal result, not an error.
+   */
+  async restore(): Promise<'restored' | 'nothing'> {
+    const customerInfo = await Purchases.restorePurchases();
+    return customerInfo.entitlements.active[PRO_ENTITLEMENT] ? 'restored' : 'nothing';
+  },
 };
