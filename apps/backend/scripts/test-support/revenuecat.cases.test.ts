@@ -22,6 +22,33 @@ type Row = { userId: string; expiresAt: Date | null; source: string };
 let rows: Map<string, Row>;
 // Existing User.id values (webhook lookups).
 let userIds: Set<string>;
+// Order of User row locks and RevenueCat calls, e.g. ["lock:user-1", "revenuecat:user-1"].
+let events: string[];
+
+const fakeEntitlement = {
+  findUnique: async ({ where }: { where: { userId: string } }) =>
+    rows.get(where.userId) ?? null,
+  deleteMany: async ({
+    where,
+  }: {
+    where: { userId: string; source: string };
+  }) => {
+    const row = rows.get(where.userId);
+    if (row && row.source === where.source) rows.delete(where.userId);
+  },
+  upsert: async ({
+    where,
+    create,
+    update,
+  }: {
+    where: { userId: string };
+    create: Row;
+    update: Partial<Row>;
+  }) => {
+    const row = rows.get(where.userId);
+    rows.set(where.userId, row ? { ...row, ...update } : create);
+  },
+};
 
 mock.module("../../src/lib/prisma.js", () => ({
   prisma: {
@@ -29,30 +56,16 @@ mock.module("../../src/lib/prisma.js", () => ({
       findMany: async ({ where }: { where: { id: { in: string[] } } }) =>
         where.id.in.filter((id) => userIds.has(id)).map((id) => ({ id })),
     },
-    entitlement: {
-      findUnique: async ({ where }: { where: { userId: string } }) =>
-        rows.get(where.userId) ?? null,
-      deleteMany: async ({
-        where,
-      }: {
-        where: { userId: string; source: string };
-      }) => {
-        const row = rows.get(where.userId);
-        if (row && row.source === where.source) rows.delete(where.userId);
-      },
-      upsert: async ({
-        where,
-        create,
-        update,
-      }: {
-        where: { userId: string };
-        create: Row;
-        update: Partial<Row>;
-      }) => {
-        const row = rows.get(where.userId);
-        rows.set(where.userId, row ? { ...row, ...update } : create);
-      },
-    },
+    entitlement: fakeEntitlement,
+    // No real isolation: the tests only check that the lock comes before the RevenueCat call.
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        $queryRaw: async (_sql: TemplateStringsArray, userId: string) => {
+          events.push(`lock:${userId}`);
+          return [];
+        },
+        entitlement: fakeEntitlement,
+      }),
   },
 }));
 
@@ -125,7 +138,9 @@ function stubRevenueCat() {
         return realFetch(input, init);
       }
       revenueCatCalls.push({ url, init });
-      return subscriber(decodeURIComponent(url.split("/").at(-1)!));
+      const userId = decodeURIComponent(url.split("/").at(-1)!);
+      events.push(`revenuecat:${userId}`);
+      return subscriber(userId);
     },
     { preconnect: realFetch.preconnect },
   ) as typeof fetch;
@@ -140,6 +155,7 @@ beforeEach(() => {
   rows = new Map();
   userIds = new Set(["user-1", "user-2"]);
   revenueCatCalls = [];
+  events = [];
   subscriber = () => subscriberWith({});
   process.env.REVENUECAT_SECRET_API_KEY = "sk_test_secret";
   process.env.REVENUECAT_WEBHOOK_AUTH = "Bearer webhook-secret";
@@ -234,13 +250,80 @@ describe("syncEntitlementFromRevenueCat", () => {
     expect(rows.has("user-1")).toBe(false);
   });
 
-  test("a row from another source is never changed", async () => {
+  test("an active row from another source is never changed", async () => {
     const manual = { userId: "user-1", expiresAt: null, source: "manual" };
     rows.set("user-1", manual);
 
     await syncEntitlementFromRevenueCat("user-1");
 
     expect(rows.get("user-1")).toEqual(manual);
+  });
+
+  test("an active, expiring row from another source is not shortened", async () => {
+    const promo = {
+      userId: "user-1",
+      expiresAt: new Date("2099-01-01T00:00:00Z"),
+      source: "manual",
+    };
+    rows.set("user-1", promo);
+    subscriber = () =>
+      subscriberWith({ pro: { expires_date: "2030-01-01T00:00:00Z" } });
+
+    await syncEntitlementFromRevenueCat("user-1");
+
+    expect(rows.get("user-1")).toEqual(promo);
+  });
+
+  test("an expired row from another source is taken over by a RevenueCat purchase", async () => {
+    rows.set("user-1", {
+      userId: "user-1",
+      expiresAt: new Date("2020-01-01T00:00:00Z"),
+      source: "manual",
+    });
+    subscriber = () =>
+      subscriberWith({ pro: { expires_date: "2030-01-01T00:00:00Z" } });
+
+    await syncEntitlementFromRevenueCat("user-1");
+
+    expect(rows.get("user-1")).toEqual({
+      userId: "user-1",
+      expiresAt: new Date("2030-01-01T00:00:00Z"),
+      source: "revenuecat",
+    });
+  });
+
+  test("an expired row from another source is kept when RevenueCat has no pro", async () => {
+    const manual = {
+      userId: "user-1",
+      expiresAt: new Date("2020-01-01T00:00:00Z"),
+      source: "manual",
+    };
+    rows.set("user-1", manual);
+
+    await syncEntitlementFromRevenueCat("user-1");
+
+    expect(rows.get("user-1")).toEqual(manual);
+  });
+
+  test("a missing expires_date throws instead of granting Pro forever", async () => {
+    const row = {
+      userId: "user-1",
+      expiresAt: new Date("2030-01-01T00:00:00Z"),
+      source: "revenuecat",
+    };
+    rows.set("user-1", row);
+    subscriber = () => subscriberWith({ pro: { product_identifier: "x" } });
+
+    await expect(syncEntitlementFromRevenueCat("user-1")).rejects.toThrow(
+      "RevenueCat returned no expires_date",
+    );
+    expect(rows.get("user-1")).toEqual(row);
+  });
+
+  test("the User row is locked before RevenueCat is read", async () => {
+    await syncEntitlementFromRevenueCat("user-1");
+
+    expect(events).toEqual(["lock:user-1", "revenuecat:user-1"]);
   });
 
   test("a non-2xx response throws with the status only and keeps the row", async () => {
