@@ -4,6 +4,8 @@ import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Linking,
   Pressable,
   ScrollView,
   Switch,
@@ -15,6 +17,8 @@ import { Entitlement } from '@/features/usage/types';
 import { getEntitlement } from '@/features/usage/api/api.usage';
 import { UsageMeter } from '@/features/usage/components/UsageSummaryCard';
 import { notifications } from '@/features/notifications/onesignal';
+import { purchases } from '@/features/purchases/revenuecat';
+import { confirmPro } from '@/features/purchases/confirmPro';
 import { Icon } from '@/components/icon';
 import { colors } from '@/styles/tokens';
 
@@ -217,18 +221,53 @@ function ReminderSection() {
   );
 }
 
-/** Manage and restore the subscription (not wired to RevenueCat yet). */
-function SubscriptionSection() {
+type SubscriptionSectionProps = {
+  /** Undefined while the plan is unknown; Manage shows only for Pro. */
+  isPro?: boolean;
+  onManage: () => void;
+  onRestore: () => void;
+};
+
+/** Manage (Pro only) and restore the subscription through RevenueCat. */
+function SubscriptionSection({ isPro, onManage, onRestore }: SubscriptionSectionProps) {
   return (
     <View className="gap-sm">
       <SectionLabel>Subscription</SectionLabel>
       <View className="overflow-hidden list">
-        {/* TODO: wire to RevenueCat (Phase 4). */}
-        <SettingsRow testID="profile-manage-subscription" label="Manage subscription" isFirst />
-        <SettingsRow testID="profile-restore-purchases" label="Restore purchases" />
+        {isPro && (
+          <SettingsRow
+            testID="profile-manage-subscription"
+            label="Manage subscription"
+            onPress={onManage}
+            isFirst
+          />
+        )}
+        <SettingsRow
+          testID="profile-restore-purchases"
+          label="Restore purchases"
+          onPress={onRestore}
+          isFirst={!isPro}
+        />
       </View>
     </View>
   );
+}
+
+/** Opens the store's subscription page; there is none when Pro was not bought on this account. */
+async function manageSubscription() {
+  try {
+    const url = await purchases.getManagementUrl();
+    if (url) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert(
+        'No subscription found',
+        'There is no active subscription on this store account.',
+      );
+    }
+  } catch {
+    Alert.alert("Couldn't open your subscription", 'Please try again.');
+  }
 }
 
 type AccountSectionProps = {
@@ -303,6 +342,29 @@ export default function ProfileScreen() {
     }, [loadEntitlement]),
   );
 
+  const isRestoringRef = useRef(false);
+
+  /** Restores purchases, asks the backend to re-read RevenueCat, then reloads the plan. */
+  const restorePurchases = async () => {
+    if (isRestoringRef.current) return;
+    isRestoringRef.current = true;
+    try {
+      const result = await purchases.restore();
+      if (result === 'nothing') {
+        Alert.alert('Nothing to restore', 'No Pro purchase was found for this store account.');
+      } else if (await confirmPro(() => getTokenRef.current())) {
+        Alert.alert('Purchases restored', "You're Pro again.");
+      } else {
+        Alert.alert('Purchases restored', 'Pro may take a moment to appear.');
+      }
+    } catch {
+      Alert.alert('Restore failed', 'Please try again.');
+    } finally {
+      isRestoringRef.current = false;
+      loadEntitlement();
+    }
+  };
+
   /** Try again from the error state; a focus refresh keeps the old usage on screen instead. */
   const retry = () => {
     setState({ status: 'loading' });
@@ -357,7 +419,11 @@ export default function ProfileScreen() {
         <ReminderSection />
 
         {/* Subscription */}
-        <SubscriptionSection />
+        <SubscriptionSection
+          isPro={state.status === 'success' ? state.entitlement.isPro : undefined}
+          onManage={manageSubscription}
+          onRestore={restorePurchases}
+        />
 
         {/* Account */}
         <AccountSection onSignOut={signOut} />

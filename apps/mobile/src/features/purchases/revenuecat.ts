@@ -97,4 +97,14 @@ export const purchases = {
     const customerInfo = await Purchases.restorePurchases();
     return customerInfo.entitlements.active[PRO_ENTITLEMENT] ? 'restored' : 'nothing';
   },
+
+  /**
+   * Store page for managing the active subscription,
+   * or null when this store account has none.
+   */
+  async getManagementUrl(): Promise<string | null> {
+    if (!(await Purchases.isConfigured())) return null;
+    const customerInfo = await Purchases.getCustomerInfo();
+    return customerInfo.managementURL;
+  },
 };
