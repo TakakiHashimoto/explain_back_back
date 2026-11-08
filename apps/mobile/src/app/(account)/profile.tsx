@@ -222,23 +222,25 @@ function ReminderSection() {
 }
 
 type SubscriptionSectionProps = {
-  /** Undefined while the plan is unknown; Manage shows only for Pro. */
-  isPro?: boolean;
-  onManage: () => void;
+  /**
+   * The store's page for the subscription, or null when there is none to manage: Free, or Pro
+   * granted outside the store (e.g. by hand). Manage shows only when there is one.
+   */
+  managementUrl: string | null;
   onRestore: () => void;
 };
 
-/** Manage (Pro only) and restore the subscription through RevenueCat. */
-function SubscriptionSection({ isPro, onManage, onRestore }: SubscriptionSectionProps) {
+/** Manage (store subscriptions only) and restore the subscription through RevenueCat. */
+function SubscriptionSection({ managementUrl, onRestore }: SubscriptionSectionProps) {
   return (
     <View className="gap-sm">
       <SectionLabel>Subscription</SectionLabel>
       <View className="overflow-hidden list">
-        {isPro && (
+        {managementUrl && (
           <SettingsRow
             testID="profile-manage-subscription"
             label="Manage subscription"
-            onPress={onManage}
+            onPress={() => openManagementUrl(managementUrl)}
             isFirst
           />
         )}
@@ -246,25 +248,17 @@ function SubscriptionSection({ isPro, onManage, onRestore }: SubscriptionSection
           testID="profile-restore-purchases"
           label="Restore purchases"
           onPress={onRestore}
-          isFirst={!isPro}
+          isFirst={!managementUrl}
         />
       </View>
     </View>
   );
 }
 
-/** Opens the store's subscription page; there is none when Pro was not bought on this account. */
-async function manageSubscription() {
+/** Opens the store's subscription page. */
+async function openManagementUrl(url: string) {
   try {
-    const url = await purchases.getManagementUrl();
-    if (url) {
-      await Linking.openURL(url);
-    } else {
-      Alert.alert(
-        'No subscription found',
-        'There is no active subscription on this store account.',
-      );
-    }
+    await Linking.openURL(url);
   } catch {
     Alert.alert("Couldn't open your subscription", 'Please try again.');
   }
@@ -318,18 +312,37 @@ export default function ProfileScreen() {
   // (focus vs. Try again) cannot overwrite a newer result. Bumping it on blur drops late responses.
   const requestIdRef = useRef(0);
 
+  const [managementUrl, setManagementUrl] = useState<string | null>(null);
+
+  /**
+   * Shows a loaded entitlement if `requestId` is still the latest. For Pro, also looks up the
+   * store's management page, which only exists when Pro was bought in the store.
+   */
+  const showEntitlement = useCallback((entitlement: Entitlement, requestId: number) => {
+    if (requestId !== requestIdRef.current) return;
+    setState({ status: 'success', entitlement });
+    if (!entitlement.isPro) {
+      setManagementUrl(null);
+      return;
+    }
+    purchases
+      .getManagementUrl()
+      .catch(() => null)
+      .then((url) => {
+        if (requestId === requestIdRef.current) setManagementUrl(url);
+      });
+  }, []);
+
   /** Fetches the entitlement and refreshes `now` for the reset countdown. */
   const loadEntitlement = useCallback(() => {
     const requestId = ++requestIdRef.current;
     setNow(Date.now());
     getEntitlement(() => getTokenRef.current())
-      .then((entitlement) => {
-        if (requestId === requestIdRef.current) setState({ status: 'success', entitlement });
-      })
+      .then((entitlement) => showEntitlement(entitlement, requestId))
       .catch((error) => {
         if (requestId === requestIdRef.current) setState({ status: 'error', error });
       });
-  }, []);
+  }, [showEntitlement]);
 
   useFocusEffect(
     useCallback(() => {
@@ -419,11 +432,7 @@ export default function ProfileScreen() {
         <ReminderSection />
 
         {/* Subscription */}
-        <SubscriptionSection
-          isPro={state.status === 'success' ? state.entitlement.isPro : undefined}
-          onManage={manageSubscription}
-          onRestore={restorePurchases}
-        />
+        <SubscriptionSection managementUrl={managementUrl} onRestore={restorePurchases} />
 
         {/* Account */}
         <AccountSection onSignOut={signOut} />
