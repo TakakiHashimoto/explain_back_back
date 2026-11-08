@@ -8,7 +8,7 @@ import { getEntitlement } from '@/features/usage/api/api.usage';
 import { Entitlement } from '@/features/usage/types';
 import { colors } from '@/styles/tokens';
 import { purchases } from '@/features/purchases/revenuecat';
-import { confirmPro } from '@/features/purchases/confirmPro';
+import { confirmPro, restoreAndConfirm } from '@/features/purchases/confirmPro';
 import { PurchasesPackage } from 'react-native-purchases';
 
 type PlanId = 'annual' | 'monthly';
@@ -159,7 +159,7 @@ export default function PaywallScreen() {
       const result = await purchases.purchase(pkg);
       if (result === 'purchased' || result === 'unverified') {
         // Pro shows only once the backend has it; a paid purchase is still not lost (webhook).
-        if (await confirmPro(() => getTokenRef.current())) {
+        if ((await confirmPro(() => getTokenRef.current()))?.isPro) {
           Alert.alert("You're Pro now", undefined, [{ text: 'OK', onPress: () => router.back() }]);
         } else {
           Alert.alert(
@@ -182,15 +182,13 @@ export default function PaywallScreen() {
     if (isBusy) return;
     setIsBusy(true);
     try {
-      const result = await purchases.restore();
-      if (result === 'restored') {
-        if (await confirmPro(() => getTokenRef.current())) {
-          Alert.alert('Purchases restored', "You're Pro again.", [
-            { text: 'OK', onPress: () => router.back() },
-          ]);
-        } else {
-          Alert.alert('Purchases restored', 'Pro may take a moment to appear.');
-        }
+      const outcome = await restoreAndConfirm(() => getTokenRef.current());
+      if (outcome.kind === 'pro') {
+        Alert.alert('Purchases restored', "You're Pro again.", [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      } else if (outcome.kind === 'pending') {
+        Alert.alert('Purchases restored', 'Pro may take a moment to appear.');
       } else {
         Alert.alert('Nothing to restore', 'No Pro purchase was found for this store account.');
       }

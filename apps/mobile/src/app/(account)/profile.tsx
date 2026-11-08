@@ -18,7 +18,7 @@ import { getEntitlement } from '@/features/usage/api/api.usage';
 import { UsageMeter } from '@/features/usage/components/UsageSummaryCard';
 import { notifications } from '@/features/notifications/onesignal';
 import { purchases } from '@/features/purchases/revenuecat';
-import { confirmPro } from '@/features/purchases/confirmPro';
+import { restoreAndConfirm } from '@/features/purchases/confirmPro';
 import { Icon } from '@/components/icon';
 import { colors } from '@/styles/tokens';
 
@@ -357,15 +357,27 @@ export default function ProfileScreen() {
 
   const isRestoringRef = useRef(false);
 
-  /** Restores purchases, asks the backend to re-read RevenueCat, then reloads the plan. */
+  /**
+   * Restores purchases and asks the backend to re-read RevenueCat. The backend's answer is shown
+   * directly (no second GET); it is dropped when the screen lost focus or reloaded meanwhile.
+   */
   const restorePurchases = async () => {
     if (isRestoringRef.current) return;
     isRestoringRef.current = true;
+    // Taken now, so a blur or a newer load during the restore makes the result stale.
+    const requestId = ++requestIdRef.current;
+    let shown = false;
     try {
-      const result = await purchases.restore();
-      if (result === 'nothing') {
+      const outcome = await restoreAndConfirm(() => getTokenRef.current());
+      if (outcome.kind === 'nothing') {
         Alert.alert('Nothing to restore', 'No Pro purchase was found for this store account.');
-      } else if (await confirmPro(() => getTokenRef.current())) {
+        return;
+      }
+      if (outcome.entitlement) {
+        showEntitlement(outcome.entitlement, requestId);
+        shown = true;
+      }
+      if (outcome.kind === 'pro') {
         Alert.alert('Purchases restored', "You're Pro again.");
       } else {
         Alert.alert('Purchases restored', 'Pro may take a moment to appear.');
@@ -374,7 +386,9 @@ export default function ProfileScreen() {
       Alert.alert('Restore failed', 'Please try again.');
     } finally {
       isRestoringRef.current = false;
-      loadEntitlement();
+      // The restore took the latest request number, so a load started before it was dropped.
+      // Reload when nothing was shown, unless the screen lost focus or reloaded meanwhile.
+      if (!shown && requestId === requestIdRef.current) loadEntitlement();
     }
   };
 
