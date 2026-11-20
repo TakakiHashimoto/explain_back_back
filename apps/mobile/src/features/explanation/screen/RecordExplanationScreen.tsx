@@ -131,6 +131,9 @@ export default function RecordExplanationScreen() {
       setPhase({ kind: 'done', explanation });
     } catch (error) {
       setPhase({ kind: 'failed', uri, seconds, message: uploadErrorMessage(error) });
+      if (error instanceof ApiError && error.code === 'FREE_LIMIT_REACHED') {
+        router.push('/paywall');
+      }
     } finally {
       uploadingRef.current = false;
     }
