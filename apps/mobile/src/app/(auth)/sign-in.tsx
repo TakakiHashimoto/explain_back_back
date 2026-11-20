@@ -1,4 +1,4 @@
-import { AuthView } from '@clerk/expo/native';
+import { AuthView } from '@clerk/expo/native-components';
 import { StyleSheet } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';

@@ -3,9 +3,11 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "@clerk/expo": "^4.6.6",
+    "@clerk/expo": "^4.17.2",
+    "@clerk/expo-native-components": "^0.4.6",
     "@expo/ui": "~57.0.21",
     "expo": "~57.0.26",
+    "expo-application": "~57.0.3",
     "expo-audio": "~57.0.5",
     "expo-constants": "~57.0.20",
     "expo-dev-client": "~57.0.18",
