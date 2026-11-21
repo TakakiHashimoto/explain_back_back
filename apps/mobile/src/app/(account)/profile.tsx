@@ -38,16 +38,30 @@ type SettingsRowProps = {
   onPress?: () => void;
   isFirst?: boolean;
   testID?: string;
+  /** Not tappable and dimmed, e.g. while the row's action is running. */
+  disabled?: boolean;
+  /** The row's action is running; reported to screen readers. */
+  busy?: boolean;
 };
 
 /** One tappable row in a settings list: label, optional value and a chevron. */
-function SettingsRow({ label, value, onPress, isFirst, testID }: SettingsRowProps) {
+function SettingsRow({
+  label,
+  value,
+  onPress,
+  isFirst,
+  testID,
+  disabled = false,
+  busy = false,
+}: SettingsRowProps) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
       onPress={onPress}
-      className={`list-row min-h-[52px] active:bg-background ${isFirst ? '' : 'list-row-divider'}`}
+      disabled={disabled}
+      accessibilityState={{ disabled, busy }}
+      className={`list-row min-h-[52px] active:bg-background ${isFirst ? '' : 'list-row-divider'} ${disabled ? 'opacity-50' : ''}`}
     >
       <Text className="body-md">{label}</Text>
       <View className="row">
@@ -228,10 +242,12 @@ type SubscriptionSectionProps = {
    */
   managementUrl: string | null;
   onRestore: () => void;
+  /** A restore is running: the Restore row is disabled and says so. */
+  isRestoring: boolean;
 };
 
 /** Manage (store subscriptions only) and restore the subscription through RevenueCat. */
-function SubscriptionSection({ managementUrl, onRestore }: SubscriptionSectionProps) {
+function SubscriptionSection({ managementUrl, onRestore, isRestoring }: SubscriptionSectionProps) {
   return (
     <View className="gap-sm">
       <SectionLabel>Subscription</SectionLabel>
@@ -246,9 +262,11 @@ function SubscriptionSection({ managementUrl, onRestore }: SubscriptionSectionPr
         )}
         <SettingsRow
           testID="profile-restore-purchases"
-          label="Restore purchases"
+          label={isRestoring ? 'Restoring…' : 'Restore purchases'}
           onPress={onRestore}
           isFirst={!managementUrl}
+          disabled={isRestoring}
+          busy={isRestoring}
         />
       </View>
     </View>
@@ -355,7 +373,10 @@ export default function ProfileScreen() {
     }, [loadEntitlement]),
   );
 
+  // The ref blocks a second tap at once (state only applies after the next render);
+  // the state only drives the row's look.
   const isRestoringRef = useRef(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   /**
    * Restores purchases and asks the backend to re-read RevenueCat. The backend's answer is shown
@@ -364,6 +385,7 @@ export default function ProfileScreen() {
   const restorePurchases = async () => {
     if (isRestoringRef.current) return;
     isRestoringRef.current = true;
+    setIsRestoring(true);
     // Taken now, so a blur or a newer load during the restore makes the result stale.
     const requestId = ++requestIdRef.current;
     let shown = false;
@@ -386,6 +408,7 @@ export default function ProfileScreen() {
       Alert.alert('Restore failed', 'Please try again.');
     } finally {
       isRestoringRef.current = false;
+      setIsRestoring(false);
       // The restore took the latest request number, so a load started before it was dropped.
       // Reload when nothing was shown, unless the screen lost focus or reloaded meanwhile.
       if (!shown && requestId === requestIdRef.current) loadEntitlement();
@@ -446,7 +469,11 @@ export default function ProfileScreen() {
         <ReminderSection />
 
         {/* Subscription */}
-        <SubscriptionSection managementUrl={managementUrl} onRestore={restorePurchases} />
+        <SubscriptionSection
+          managementUrl={managementUrl}
+          onRestore={restorePurchases}
+          isRestoring={isRestoring}
+        />
 
         {/* Account */}
         <AccountSection onSignOut={signOut} />
