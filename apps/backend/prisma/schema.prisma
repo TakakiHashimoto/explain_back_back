@@ -71,7 +71,7 @@ model Explanation {
   transcript String?  @db.Text
   createdAt  DateTime @default(now())
 
-  user          User           @relation(fields: [userId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   knowledgeGaps KnowledgeGap[]
 
   @@index([userId, createdAt])
@@ -85,7 +85,7 @@ model KnowledgeGap {
   severity      Int
   createdAt     DateTime @default(now())
 
-  explanation    Explanation     @relation(fields: [explanationId], references: [id])
+  explanation    Explanation     @relation(fields: [explanationId], references: [id], onDelete: Cascade)
   reviewQuestion ReviewQuestion?
 
   @@index([explanationId])
@@ -97,7 +97,7 @@ model ReviewQuestion {
   question  String   @db.Text
   createdAt DateTime @default(now())
 
-  knowledgeGap KnowledgeGap    @relation(fields: [gapId], references: [id])
+  knowledgeGap KnowledgeGap    @relation(fields: [gapId], references: [id], onDelete: Cascade)
   attempts     ReviewAttempt[]
   schedule     ReviewSchedule?
 }
@@ -111,7 +111,7 @@ model ReviewAttempt {
   feedback   String   @db.Text
   createdAt  DateTime @default(now())
 
-  question ReviewQuestion @relation(fields: [questionId], references: [id])
+  question ReviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([questionId, createdAt])
 }
@@ -124,7 +124,7 @@ model ReviewSchedule {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  question ReviewQuestion @relation(fields: [questionId], references: [id])
+  question ReviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([nextReviewAt])
 }

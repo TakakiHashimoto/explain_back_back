@@ -5,11 +5,15 @@ The shared Supabase database uses this migration sequence:
 1. `20261002003434_init`
 2. `20261006003730_add_entitlement_and_usage_record`
 3. `20261015000000_add_learning_history_and_reviews`
+4. `20261024023811_add_review_reminders`
+5. `20261121210805_cascade_learning_history`
 
 The schema combines subscription and usage tracking with learning history.
 `User` retains its usage window, entitlement, and usage-record relations, and
 owns explanations. Knowledge gaps and review data inherit ownership through
-the explanation relation.
+the explanation relation. Every relation below `User` uses `onDelete: Cascade`
+(migration 5), so deleting a `User` row deletes all of that user's records
+(account deletion, spec §16).
 
 ## Recovery of the combined migration
 
