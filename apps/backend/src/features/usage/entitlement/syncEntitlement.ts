@@ -10,11 +10,17 @@ const SUBSCRIBERS_URL = "https://api.revenuecat.com/v1/subscribers/";
 /** The fields we read from `subscriber.entitlements.<id>` (REST API v1). Untrusted input. */
 type RevenueCatEntitlement = {
   expires_date?: string | null;
-  grace_period_expires_date?: string | null;
+  product_identifier?: string;
 };
 
 type SubscriberResponse = {
-  subscriber?: { entitlements?: Record<string, RevenueCatEntitlement> };
+  subscriber?: {
+    entitlements?: Record<string, RevenueCatEntitlement>;
+    subscriptions?: Record<
+      string,
+      { grace_period_expires_date?: string | null }
+    >;
+  };
 };
 
 // The RevenueCat call (10 s timeout) runs inside the transaction, plus a margin for the DB work.
@@ -46,7 +52,10 @@ export async function syncEntitlementFromRevenueCat(
       // Lock the User row (all queries below must use tx, not prisma)
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
 
-      const pro = await fetchProEntitlement(userId, apiKey);
+      const { pro, gracePeriodExpiresDate } = await fetchProEntitlement(
+        userId,
+        apiKey,
+      );
 
       const existing = await tx.entitlement.findUnique({ where: { userId } });
       if (
@@ -66,7 +75,7 @@ export async function syncEntitlementFromRevenueCat(
         return;
       }
 
-      const expiresAt = toExpiresAt(pro);
+      const expiresAt = toExpiresAt(pro, gracePeriodExpiresDate);
       await tx.entitlement.upsert({
         where: { userId },
         create: { userId, expiresAt, source: REVENUECAT_SOURCE },
@@ -77,11 +86,17 @@ export async function syncEntitlementFromRevenueCat(
   );
 }
 
-/** GET /v1/subscribers/{id} and return its "pro" entitlement, or undefined when there is none. */
+/**
+ * GET /v1/subscribers/{id} and return its "pro" entitlement (undefined when there is none)
+ * and the grace period end of the subscription that granted it.
+ */
 async function fetchProEntitlement(
   userId: string,
   apiKey: string,
-): Promise<RevenueCatEntitlement | undefined> {
+): Promise<{
+  pro: RevenueCatEntitlement | undefined;
+  gracePeriodExpiresDate: string | null | undefined;
+}> {
   // No X-Platform header: this is an informational read and must not touch `last_seen`.
   const response = await fetch(
     `${SUBSCRIBERS_URL}${encodeURIComponent(userId)}`,
@@ -97,7 +112,13 @@ async function fetchProEntitlement(
 
   const body = (await response.json()) as SubscriberResponse;
   // The dictionary also contains expired entitlements; getPlan() compares expiresAt with now.
-  return body.subscriber?.entitlements?.[PRO_ENTITLEMENT];
+  const pro = body.subscriber?.entitlements?.[PRO_ENTITLEMENT];
+  const gracePeriodExpiresDate = pro?.product_identifier
+    ? body.subscriber?.subscriptions?.[pro.product_identifier]
+        ?.grace_period_expires_date
+    : undefined;
+
+  return { pro, gracePeriodExpiresDate };
 }
 
 /** Same rule as getPlan(): null never expires, otherwise active until expiresAt. */
@@ -107,19 +128,21 @@ function isActive(expiresAt: Date | null, now: Date): boolean {
 
 /**
  * The time Pro ends: null for a non-expiring (lifetime) entitlement, otherwise the later of
- * `expires_date` and `grace_period_expires_date`, so a billing grace period keeps Pro.
+ * the entitlement's `expires_date` and the grace period end of the subscription that granted
+ * it (`subscriptions[product_identifier]`, the documented grace signal), so a billing grace
+ * period keeps Pro.
  * Only an explicit null means lifetime: a missing field must never grant Pro forever.
  */
-function toExpiresAt(entitlement: RevenueCatEntitlement): Date | null {
+function toExpiresAt(
+  entitlement: RevenueCatEntitlement,
+  gracePeriodExpiresDate: string | null | undefined,
+): Date | null {
   if (entitlement.expires_date === null) return null;
   if (typeof entitlement.expires_date !== "string") {
     throw new Error("RevenueCat returned no expires_date");
   }
 
-  const dates = [
-    entitlement.expires_date,
-    entitlement.grace_period_expires_date,
-  ]
+  const dates = [entitlement.expires_date, gracePeriodExpiresDate]
     .filter((value): value is string => typeof value === "string")
     .map((value) => new Date(value));
   if (dates.some((date) => Number.isNaN(date.getTime()))) {

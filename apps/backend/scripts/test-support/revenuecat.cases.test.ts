@@ -87,12 +87,10 @@ mock.module("../../src/features/usage/usage.service.js", () => ({
   },
 }));
 
-const { syncEntitlementFromRevenueCat } = await import(
-  "../../src/features/usage/entitlement/syncEntitlement.js"
-);
-const { default: usageRoutes, clearRefreshCooldowns } = await import(
-  "../../src/features/usage/routes/usage.routes.js"
-);
+const { syncEntitlementFromRevenueCat } =
+  await import("../../src/features/usage/entitlement/syncEntitlement.js");
+const { default: usageRoutes, clearRefreshCooldowns } =
+  await import("../../src/features/usage/routes/usage.routes.js");
 const {
   default: webhookRoutes,
   getAppUserIds,
@@ -146,9 +144,12 @@ function stubRevenueCat() {
   ) as typeof fetch;
 }
 
-/** A REST API v1 subscriber body with the given entitlements. */
-function subscriberWith(entitlements: Record<string, unknown>) {
-  return Response.json({ subscriber: { entitlements } });
+/** A REST API v1 subscriber body with the given entitlements and subscriptions. */
+function subscriberWith(
+  entitlements: Record<string, unknown>,
+  subscriptions: Record<string, unknown> = {},
+) {
+  return Response.json({ subscriber: { entitlements, subscriptions } });
 }
 
 beforeEach(() => {
@@ -208,6 +209,52 @@ describe("syncEntitlementFromRevenueCat", () => {
 
   test("a later grace period end extends expiresAt", async () => {
     subscriber = () =>
+      subscriberWith(
+        {
+          pro: {
+            expires_date: "2030-01-01T00:00:00Z",
+            product_identifier: "monthly",
+          },
+        },
+        {
+          monthly: {
+            grace_period_expires_date: "2030-01-08T00:00:00Z",
+          },
+        },
+      );
+
+    await syncEntitlementFromRevenueCat("user-1");
+
+    expect(rows.get("user-1")?.expiresAt).toEqual(
+      new Date("2030-01-08T00:00:00Z"),
+    );
+  });
+
+  test("no subscription for the entitlement's product does not extend expiresAt", async () => {
+    subscriber = () =>
+      subscriberWith(
+        {
+          pro: {
+            expires_date: "2030-01-01T00:00:00Z",
+            product_identifier: "monthly",
+          },
+        },
+        {
+          annual: {
+            grace_period_expires_date: "2030-01-08T00:00:00Z",
+          },
+        },
+      );
+
+    await syncEntitlementFromRevenueCat("user-1");
+
+    expect(rows.get("user-1")?.expiresAt).toEqual(
+      new Date("2030-01-01T00:00:00Z"),
+    );
+  });
+
+  test("a grace date on the entitlement does not extend expiresAt", async () => {
+    subscriber = () =>
       subscriberWith({
         pro: {
           expires_date: "2030-01-01T00:00:00Z",
@@ -218,7 +265,7 @@ describe("syncEntitlementFromRevenueCat", () => {
     await syncEntitlementFromRevenueCat("user-1");
 
     expect(rows.get("user-1")?.expiresAt).toEqual(
-      new Date("2030-01-08T00:00:00Z"),
+      new Date("2030-01-01T00:00:00Z"),
     );
   });
 
