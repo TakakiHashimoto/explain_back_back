@@ -1,4 +1,5 @@
 import { prisma } from "../../../lib/prisma.js";
+import { z } from "zod";
 
 // Business code only knows the entitlement, never product IDs (spec §30).
 const PRO_ENTITLEMENT = "pro";
@@ -7,21 +8,33 @@ export const REVENUECAT_SOURCE = "revenuecat";
 
 const SUBSCRIBERS_URL = "https://api.revenuecat.com/v1/subscribers/";
 
-/** The fields we read from `subscriber.entitlements.<id>` (REST API v1). Untrusted input. */
-type RevenueCatEntitlement = {
-  expires_date?: string | null;
-  product_identifier?: string;
-};
+/**
+ * The fields we read from `subscriber.entitlements.<id>` (REST API v1).
+ * Validated at run time by the schema below.
+ */
+const RevenueCatEntitlementSchema = z.object({
+  expires_date: z.string().nullish(),
+  product_identifier: z.string().optional(),
+});
+type RevenueCatEntitlement = z.infer<typeof RevenueCatEntitlementSchema>;
 
-type SubscriberResponse = {
-  subscriber?: {
-    entitlements?: Record<string, RevenueCatEntitlement>;
-    subscriptions?: Record<
-      string,
-      { grace_period_expires_date?: string | null }
-    >;
-  };
-};
+const SubscriberResponseSchema = z.object({
+  subscriber: z
+    .object({
+      entitlements: z
+        .record(z.string(), RevenueCatEntitlementSchema)
+        .optional(),
+      subscriptions: z
+        .record(
+          z.string(),
+          z.object({
+            grace_period_expires_date: z.string().nullish(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+});
 
 // The RevenueCat call (10 s timeout) runs inside the transaction, plus a margin for the DB work.
 const SYNC_TRANSACTION_TIMEOUT_MS = 15_000;
@@ -110,7 +123,12 @@ async function fetchProEntitlement(
     throw new Error(`RevenueCat HTTP ${response.status}`);
   }
 
-  const body = (await response.json()) as SubscriberResponse;
+  const parsed = SubscriberResponseSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    // Our own message only: zod's issues can contain parts of the body.
+    throw new Error("RevenueCat returned an unexpected response");
+  }
+  const body = parsed.data;
   // The dictionary also contains expired entitlements; getPlan() compares expiresAt with now.
   const pro = body.subscriber?.entitlements?.[PRO_ENTITLEMENT];
   const gracePeriodExpiresDate = pro?.product_identifier
