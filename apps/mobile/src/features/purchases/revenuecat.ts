@@ -5,13 +5,8 @@ import type { PurchasesError, PurchasesPackage } from 'react-native-purchases';
 const PRO_ENTITLEMENT = 'pro';
 let currentUserId: string | undefined;
 
-/** The public SDK key of this platform's store (Google Play / App Store). */
+/** The public SDK key of Google Play. */
 function storeApiKey(): string {
-  if (Platform.OS === 'ios') {
-    const key = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY ?? '';
-    if (!key) console.warn('Missing EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY');
-    return key;
-  }
   if (Platform.OS === 'android') {
     const key = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY ?? '';
     if (!key) console.warn('Missing EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY');
