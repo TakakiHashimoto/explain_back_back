@@ -20,6 +20,10 @@ export const ERRORS = {
     status: 502,
     message: "Could not check your subscription.",
   },
+  ACCOUNT_DELETION_FAILED: {
+    status: 502,
+    message: "Could not delete your account.",
+  },
 } as const;
 
 export type ErrorCode = keyof typeof ERRORS;

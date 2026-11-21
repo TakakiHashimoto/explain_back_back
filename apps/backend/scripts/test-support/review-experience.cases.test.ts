@@ -116,6 +116,14 @@ mock.module("@clerk/express", () => ({
     isAuthenticated: req.headers.authorization === "Bearer test-token",
     userId: "clerk-owner",
   }),
+  // Imported by DELETE /me (account deletion); unused by review tests.
+  clerkClient: {
+    users: {
+      deleteUser: async () => {
+        throw new Error("not used in review tests");
+      },
+    },
+  },
 }));
 const reserveUsage = mock(async () => "usage-1");
 const completeUsage = mock(async () => {});
