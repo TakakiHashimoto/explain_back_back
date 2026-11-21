@@ -95,7 +95,7 @@ const {
   default: webhookRoutes,
   getAppUserIds,
   isAuthorized,
-} = await import("../../src/features/usage/routes/webhook.routes.js");
+} = await import("../../src/features/usage/routes/revenuecatWebhook.routes.js");
 const { AppError, sendError } = await import("../../src/lib/errors.js");
 
 let server: Server;
