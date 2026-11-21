@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/expo';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/icon';
 import { getEntitlement } from '@/features/usage/api/api.usage';
@@ -56,19 +56,21 @@ type PlanOptionProps = {
   price: string;
   badge?: string;
   selected: boolean;
+  disabled?: boolean;
   onPress: () => void;
   testID?: string;
 };
 
 /** A radio-style plan card. The 1px border gets 1px more padding so both states have the same size. */
-function PlanOption({ label, price, badge, selected, onPress, testID }: PlanOptionProps) {
+function PlanOption({ label, price, badge, selected, disabled, onPress, testID }: PlanOptionProps) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
+      accessibilityState={{ checked: selected, disabled: !!disabled }}
       onPress={onPress}
-      className={`flex-row items-center gap-[14px] bg-surface rounded-lg ${
+      disabled={disabled}
+      className={`flex-row items-center gap-[14px] bg-surface rounded-lg ${disabled ? 'opacity-50' : ''} ${
         selected
           ? 'border-2 border-primary px-md py-[14px]'
           : 'border border-border px-[17px] py-[15px]'
@@ -102,8 +104,12 @@ export default function PaywallScreen() {
   const { getToken } = useAuth();
   const [plan, setPlan] = useState<PlanId>('annual');
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
-  // A purchase or a restore is running; both buttons are disabled meanwhile.
-  const [isBusy, setIsBusy] = useState(false);
+  // A purchase or a restore is running. Every control (and the Android back button) is blocked
+  // until its result Alert is shown, so the Alert's router.back() always closes the Paywall.
+  // The ref is the double-tap guard (it updates synchronously); the state is for display only.
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState<'purchase' | 'restore' | null>(null);
+  const isBusy = busy !== null;
   const [now, setNow] = useState(() => Date.now());
   const [plans, setPlans] = useState<{
     monthly: PurchasesPackage;
@@ -143,6 +149,23 @@ export default function PaywallScreen() {
     }, []),
   );
 
+  // Returning true from the handler swallows the hardware back press.
+  useEffect(() => {
+    if (!isBusy) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [isBusy]);
+
+  function startBusy(kind: 'purchase' | 'restore') {
+    busyRef.current = true;
+    setBusy(kind);
+  }
+
+  function endBusy() {
+    busyRef.current = false;
+    setBusy(null);
+  }
+
   // Profile can open the Paywall before the limit, so the limit notes show only when it is reached.
   const usage = entitlement?.usage;
   const isLimitReached = !!usage && usage.analyses.used >= usage.analyses.limit;
@@ -153,8 +176,8 @@ export default function PaywallScreen() {
 
   async function onContinue() {
     const pkg = plans?.[plan];
-    if (!pkg || isBusy) return;
-    setIsBusy(true);
+    if (!pkg || busyRef.current) return;
+    startBusy('purchase');
     try {
       const result = await purchases.purchase(pkg);
       if (result === 'purchased' || result === 'unverified') {
@@ -174,13 +197,13 @@ export default function PaywallScreen() {
     } catch {
       Alert.alert('Purchase failed', 'Please try again.');
     } finally {
-      setIsBusy(false);
+      endBusy();
     }
   }
 
   async function onRestore() {
-    if (isBusy) return;
-    setIsBusy(true);
+    if (busyRef.current) return;
+    startBusy('restore');
     try {
       const outcome = await restoreAndConfirm(() => getTokenRef.current());
       if (outcome.kind === 'pro') {
@@ -195,7 +218,7 @@ export default function PaywallScreen() {
     } catch {
       Alert.alert('Restore failed', 'Please try again.');
     } finally {
-      setIsBusy(false);
+      endBusy();
     }
   }
 
@@ -207,7 +230,11 @@ export default function PaywallScreen() {
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={() => router.back()}
-          className="justify-center items-center active:bg-surface-muted rounded-full w-11 h-11"
+          disabled={isBusy}
+          accessibilityState={{ disabled: isBusy }}
+          className={`justify-center items-center active:bg-surface-muted rounded-full w-11 h-11 ${
+            isBusy ? 'opacity-50' : ''
+          }`}
         >
           <Icon name="close" size={22} color={colors.textSecondary} />
         </Pressable>
@@ -217,10 +244,10 @@ export default function PaywallScreen() {
           onPress={onRestore}
           className="p-3"
           disabled={isBusy}
-          accessibilityState={{ disabled: isBusy }}
+          accessibilityState={{ disabled: isBusy, busy: busy === 'restore' }}
         >
           <Text className="font-sans font-semibold text-[14px] text-primary leading-[20px]">
-            Restore
+            {busy === 'restore' ? 'Restoring…' : 'Restore'}
           </Text>
         </Pressable>
       </View>
@@ -285,6 +312,7 @@ export default function PaywallScreen() {
                 {...option}
                 price={pkg ? pkg.product.priceString + period : '—'}
                 selected={plan === id}
+                disabled={isBusy}
                 onPress={() => setPlan(id)}
               />
             );
@@ -298,9 +326,11 @@ export default function PaywallScreen() {
             onPress={onContinue}
             className={isBusy ? 'btn-ghost' : 'btn-primary'}
             disabled={isBusy || !plans}
-            accessibilityState={{ disabled: isBusy || !plans }}
+            accessibilityState={{ disabled: isBusy || !plans, busy: busy === 'purchase' }}
           >
-            <Text className={isBusy ? 'btn-ghost-text' : 'btn-primary-text'}>Continue</Text>
+            <Text className={isBusy ? 'btn-ghost-text' : 'btn-primary-text'}>
+              {busy === 'purchase' ? 'Purchasing…' : 'Continue'}
+            </Text>
           </Pressable>
           <Text className="text-muted text-center body-sm">
             Cancel anytime in your store settings.
