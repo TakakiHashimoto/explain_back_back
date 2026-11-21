@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getUsage } from "../usage.service.js";
-import { requireUser } from "../../../middleware/require-user.js";
+import { requireUser } from "../../../middleware/requireUser.js";
 import { syncEntitlementFromRevenueCat } from "../entitlement/syncEntitlement.js";
 import { AppError } from "../../../lib/errors.js";
 

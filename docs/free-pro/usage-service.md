@@ -25,7 +25,7 @@ reserveUsage(userId: string, kind: UsageKind): Promise<string>
 
 | 引数 / 戻り値 | 内容 |
 |---|---|
-| `userId` | **内部の `User.id`**。[requireUser](../../apps/backend/src/middleware/require-user.ts) の後なら `req.user!.id`。Clerk の user id（`authSubject`）ではない |
+| `userId` | **内部の `User.id`**。[requireUser](../../apps/backend/src/middleware/requireUser.ts) の後なら `req.user!.id`。Clerk の user id（`authSubject`）ではない |
 | `kind` | `"ANALYSIS"`（A：分析1回）または `"REVIEW"`（B：フォローアップ質問への回答1回） |
 | 戻り値 | 作った `UsageRecord.id`（UUID） |
 | 上限到達（無料） | `AppError("FREE_LIMIT_REACHED")` を投げる → 429 |

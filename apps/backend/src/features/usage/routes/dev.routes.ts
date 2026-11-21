@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { completeUsage, reserveUsage } from "../usage.service.js";
-import { requireUser } from "../../../middleware/require-user.js";
+import { requireUser } from "../../../middleware/requireUser.js";
 import { prisma } from "../../../lib/prisma.js";
 
 const router = Router();

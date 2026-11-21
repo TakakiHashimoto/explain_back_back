@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireUser } from "../../../middleware/require-user.js";
+import { requireUser } from "../../../middleware/requireUser.js";
 import { reviewAnswers } from "../controllers/review.controller.js";
 import { getReviewQuestionController } from "../controllers/getReviewQuestion.controller.js";
 

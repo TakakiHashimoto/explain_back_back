@@ -70,7 +70,7 @@ mock.module("../../src/lib/prisma.js", () => ({
 }));
 
 // Signed in as "user-1" (no Clerk).
-mock.module("../../src/middleware/require-user.js", () => ({
+mock.module("../../src/middleware/requireUser.js", () => ({
   requireUser: (req: Req, _res: Res, next: NextFunction) => {
     req.user = { id: "user-1" } as Req["user"];
     next();

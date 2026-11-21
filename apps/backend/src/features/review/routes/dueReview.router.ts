@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireUser } from "../../../middleware/require-user.js";
+import { requireUser } from "../../../middleware/requireUser.js";
 import { getDueReviewsController } from "../controllers/dueReview.controller.js";
 import { getHistoryController } from "../controllers/getHistory.controller.js";
 
