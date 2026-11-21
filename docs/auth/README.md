@@ -33,7 +33,7 @@ handler                         … req.user!.id を使う
 ```ts
 // apps/backend/src/router/xxxRoutes.ts
 import { Router } from "express";
-import { requireUser } from "../middleware/require-user.js";
+import { requireUser } from "../middleware/requireUser.js";
 
 const router = Router();
 

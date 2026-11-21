@@ -26,7 +26,7 @@ let committed = false;
 let questionCalls: string[] = [];
 let gapCount = 1;
 
-mock.module("../src/middleware/require-user.js", () => ({
+mock.module("../src/middleware/requireUser.js", () => ({
   requireUser: (req: Request, _res: Response, next: NextFunction) => {
     req.user = { id: "user-1" } as Request["user"];
     next();

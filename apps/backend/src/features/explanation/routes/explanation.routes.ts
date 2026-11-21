@@ -5,7 +5,7 @@ import {
   type Response,
 } from "express";
 import multer from "multer";
-import { requireUser } from "../../../middleware/require-user.js";
+import { requireUser } from "../../../middleware/requireUser.js";
 import { AppError } from "../../../lib/errors.js";
 import { createExplanation } from "../controllers/createExplanation.controller.js";
 import { MAX_AUDIO_BYTES } from "../explanation.const.js";
