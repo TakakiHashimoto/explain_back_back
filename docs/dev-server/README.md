@@ -139,7 +139,9 @@ package.json
 | `OPENAI_API_KEY` ほか OpenAI の設定 | ローカルと同じ | |
 | `FAKE_AI_EVALUATION` | 設定しない（または `false`） | `NODE_ENV=production` で `true` にすると、起動時にエラーで止まる |
 | `NOTIFICATION_DRY_RUN` | `true` | |
-| `ONESIGNAL_*`, `REVENUECAT_*` | 必要になったら設定する | `REVENUECAT_WEBHOOK_AUTH` を設定すると、RevenueCat の webhook をトンネルなしで試せる |
+| `ONESIGNAL_APP_ID` / `ONESIGNAL_REST_API_KEY` / `REVENUECAT_SECRET_API_KEY` | 設定する | アカウント削除（`DELETE /api/v1/me`）が RevenueCat と OneSignal のデータも消すため。ないと削除は必ず `502` になる |
+| `REVENUECAT_WEBHOOK_AUTH` | 必要になったら設定する | 設定すると、RevenueCat の webhook をトンネルなしで試せる |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Clerk の dev instance の webhook の値（`whsec_…`） | ないと、ウェブからのアカウント削除（Clerk の webhook）がすべて `400` になる。取り方と作り直し方は [docs/account-deletion/clerk-webhook-secret.md](../account-deletion/clerk-webhook-secret.md) |
 
 ### 3.3 動いているか確かめる
 
@@ -171,6 +173,7 @@ curl -i https://explain-back-back.onrender.com/api/v1/me
 
 - 新しい空の DB（`prisma migrate deploy` で作る）
 - Clerk の production instance
+- Clerk の production instance の webhook の endpoint と、その `CLERK_WEBHOOK_SIGNING_SECRET`（dev の値とは別。手順は [docs/account-deletion/clerk-webhook-secret.md](../account-deletion/clerk-webhook-secret.md)）
 - EAS で `EXPO_PUBLIC_API_URL` を設定して作る AAB
 
 開発用サーバーの設定や DB を、本番にそのまま使い回さないでください。
