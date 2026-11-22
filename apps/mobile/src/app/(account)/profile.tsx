@@ -303,6 +303,14 @@ function AccountSection({ onSignOut }: AccountSectionProps) {
         >
           <Text className="font-semibold text-danger-text body-md">Sign out</Text>
         </Pressable>
+        <Pressable
+          testID="profile-delete-account"
+          accessibilityRole="button"
+          onPress={() => router.push('/delete-account')}
+          className="active:bg-background min-h-[52px] list-row list-row-divider"
+        >
+          <Text className="font-semibold text-danger-text body-md">Delete account</Text>
+        </Pressable>
       </View>
     </View>
   );
