@@ -8,6 +8,7 @@ import authRoutes from "./features/me/routes/me.routes.js";
 import devRoutes from "./features/usage/routes/dev.routes.js";
 import usageRoutes from "./features/usage/routes/usage.routes.js";
 import revenuecatWebhookRoutes from "./features/usage/routes/revenuecatWebhook.routes.js";
+import clerkWebhookRoutes from "./features/me/routes/clerkWebhook.routes.js";
 import { AppError, sendError } from "./lib/errors.js";
 import reviewRouter from "./features/review/routes/review.router.js";
 import reviewQuestionRouter from "./features/review/routes/reviewQuestion.router.js";
@@ -15,6 +16,10 @@ import dueReviewRouter from "./features/review/routes/dueReview.router.js";
 import explanationRouter from "./features/explanation/routes/explanation.routes.js";
 
 export const app = express();
+
+// Mounted before express.json(): Svix signs the raw request body,
+// and express.json() replaces it with a parsed object.
+app.use("/api/v1/webhooks", clerkWebhookRoutes);
 
 app.use(express.json());
 // health check end point
